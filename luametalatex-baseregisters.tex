@@ -1,0 +1,49 @@
+\begingroup
+\catcode`\^^^^ffff=11
+\catcode`\@=11
+\toks0{%
+  local dimen_cmd = token.command_id'assign_dimen'
+  local tex_params = {}
+  local texmeta = getmetatable(tex)
+  local texmetaoldindex = texmeta.__index
+  local texmetaoldnewindex = texmeta.__newindex
+  function texmeta.__index(t, k)
+    local v = tex_params[k]
+    if v then
+      if v.command == dimen_cmd then
+        return tex.dimen[v.index]
+      end
+    else
+      return texmetaoldindex(t, k)
+    end
+  end
+  function texmeta.__newindex(t, k, v)
+    local p = tex_params[k]
+    if p then
+      if p.command == dimen_cmd then
+        tex.dimen[p.index] = v
+      end
+    else
+      return texmetaoldnewindex(t, k, v)
+    end
+  end
+}
+\def\InternalAlloc#1#2#3#4#5{%
+  \csname new#3\endcsname#1%
+  \global#1=#5\relax
+  \etoksapp0{#2_params["\luaescapestring{#4}"] = token.create"\luaescapestring{\csstring#1}"}
+}
+\def\internalAlloc#1#2#3{%
+  \expandafter\InternalAlloc\csname ^^^^fffe#3@#1\endcsname{#1}{#2}{#3}%
+}
+\def\texAlloc#1#2{%
+  \expandafter\InternalAlloc\csname #2\endcsname{tex}{#1}{#2}%
+}
+\texAlloc{dimen}{pageheight}{11in}
+\texAlloc{dimen}{pagewidth}{8.5in}
+% \internalAlloc{tex}{dimen}{pagewidth}
+\directlua{
+  lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0]
+  \the\toks0
+}
+\endgroup
