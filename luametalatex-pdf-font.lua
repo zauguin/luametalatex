@@ -1,5 +1,5 @@
 local mapping = require'luametalatex-pdf-font-map'
-mapping.mapfile'/usr/local/texlive/2019/texmf-var/fonts/map/pdftex/updmap/pdftex.map'
+mapping.mapfile(kpse.find_file('pdftex.map', 'map', true))
 local tounicode = {
   [-3] = require'luametalatex-pdf-font-cmap3',
          require'luametalatex-pdf-font-cmap1',
