@@ -3,7 +3,6 @@ local newpdf = require'luametalatex-pdf'
 local pfile = newpdf.open(tex.jobname .. '.pdf')
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
-print(token, token.luacmd)
 token.luacmd("shipout", function()
   local voff = node.new'kern'
   voff.kern = tex.voffset + tex.sp'1in'

@@ -4,10 +4,10 @@ local functions = lua.getfunctionstable()
 function lua.get_functions_table() return functions end
 local set_lua = token.set_lua
 -- local new_luafunction = luatexbase.new_luafunction
-local i=12342
+local predefined_luafunctions = 0
 local function new_luafunction(name)
-  i = i+1
-  return i
+  predefined_luafunctions = predefined_luafunctions + 1
+  return predefined_luafunctions
 end
 function token.luacmd(name, func, ...)
   local idx = new_luafunction(name)
@@ -101,7 +101,7 @@ local function do_openout(p)
     end
   end
 end
-functions[39] = function(_, immediate) -- \openout
+token.luacmd("openout", function(_, immediate) -- \openout
   local file = token.scan_int()
   token.scan_keyword'='
   local name = scan_filename()
@@ -113,14 +113,14 @@ functions[39] = function(_, immediate) -- \openout
     properties[whatsit] = props
     node.write(whatsit)
   end
-end
+end, "protected")
 local function do_closeout(p)
   if ofiles[p.file] then
     ofiles[p.file]:close()
     ofiles[p.file] = nil
   end
 end
-functions[40] = function(_, immediate) -- \closeout
+token.luacmd("closeout", function(_, immediate) -- \closeout
   local file = token.scan_int()
   local props = {file = file, handle = do_closeout}
   if immediate == "immediate" then
@@ -130,7 +130,7 @@ functions[40] = function(_, immediate) -- \closeout
     properties[whatsit] = props
     node.write(whatsit)
   end
-end
+end, "protected")
 local function do_write(p)
   local content = token.to_string(p.data) .. '\n'
   local file = ofiles[p.file]
@@ -140,7 +140,7 @@ local function do_write(p)
     texio.write_nl(p.file < 0 and "log" or "term and log", content)
   end
 end
-functions[41] = function(_, immediate) -- \write
+token.luacmd("write", function(_, immediate) -- \write
   local file = token.scan_int()
   local content = token.scan_tokenlist()
   local props = {file = file, data = content, handle = do_write}
@@ -151,29 +151,31 @@ functions[41] = function(_, immediate) -- \write
     properties[whatsit] = props
     node.write(whatsit)
   end
-end
+end, "protected")
 local lua_call_cmd = token.command_id'lua_call'
-functions[42] = function() -- \immediate
+token.luacmd("immediate", function() -- \immediate
   local next_tok = token.scan_token()
   if next_tok.command ~= lua_call_cmd then
     return token.put_next(next_tok)
   end
   local function_id = next_tok.index
   functions[function_id](function_id, 'immediate')
-end
-functions[43] = function() -- \pdfvariable
-  local name = token.scan_string()
-  print('Missing \\pdf' .. name)
-end
-token.set_lua("openout", 39, "protected")
-token.set_lua("closeout", 40, "protected")
-token.set_lua("write", 41, "protected")
-write_tok = token.create'write'
-token.set_lua("immediate", 42, "protected")
-token.set_lua("pdfvariable", 43)
+end, "protected")
+-- functions[43] = function() -- \pdfvariable
+--   local name = token.scan_string()
+--   print('Missing \\pdf' .. name)
+-- end
 local prepared_code = lua.bytecode[1]
 if prepared_code then
   prepared_code()
   prepared_code, lua.bytecode[1] = nil, nil
+  function fixupluafunctions()
+    new_luafunction = luatexbase.new_luafunction
+    fixupluafunctions = nil
+  end
+else
+  function fixupluafunctions()
+    tex.setcount("global", "e@alloc@luafunction@count", predefined_luafunctions)
+  end
 end
 require'luametalatex-back-pdf'
