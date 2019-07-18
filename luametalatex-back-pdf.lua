@@ -5,9 +5,9 @@ local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() r
 local usedglyphs = {}
 token.luacmd("shipout", function()
   local voff = node.new'kern'
-  voff.kern = tex.voffset + pdf.variable.horigin
+  voff.kern = tex.voffset + pdf.variable.vorigin
   voff.next = token.scan_list()
-  voff.next.shift = tex.hoffset + pdf.variable.vorigin
+  voff.next.shift = tex.hoffset + pdf.variable.horigin
   local list = node.vpack(voff)
   list.height = tex.pageheight
   list.width = tex.pagewidth
