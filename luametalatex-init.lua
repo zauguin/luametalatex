@@ -314,7 +314,13 @@ end
 --
 -- unicode = {utf8 = utf8}
 -- utf8.byte = utf8.codepoint
-kpse.set_program_name()
+do
+  local progname
+  for _, a in ipairs(arg) do if a:sub(1,11) == "--progname=" then
+    progname = a:sub(12)
+  end end
+  kpse.set_program_name(nil, progname)
+end
 package.searchers[2] = function(modname)
   local filename = kpse.find_file(modname, "kpse_lua_format", true)
   if not filename then

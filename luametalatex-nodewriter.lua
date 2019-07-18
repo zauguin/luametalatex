@@ -26,7 +26,7 @@ end)()
 local whatsithandler = (function()
   local whatsits = node.whatsits()
   local function unknown_handler(p, n, x, y, ...)
-    local prop = properties[n]
+    local prop = properties[n] or node.getproperty(n)
     if prop and prop.handle then
       prop:handle(p, n, x, y, ...)
     else
@@ -398,7 +398,8 @@ function nodehandler.glyph(p, n, x, y, ...)
   local f, fid = p.vfont.font, p.vfont.fid
   local c = f.characters[n.char]
   if not c then
-    error[[Invalid characters]]
+    texio.write_nl("Missing character")
+    return
   end
   if c.commands then return do_commands(p, c, f, fid, x, y, ...) end
   toglyph(p, n.font, x + n.xoffset, y + n.yoffset, n.expansion_factor)
@@ -473,6 +474,25 @@ function whatsithandler.pdf_end_link(p, n, x, y, outer, _, level)
   if link.level ~= level then error[[Wrong link level]] end
   addlinkpoint(p, link, x, y, outer, true)
 end
+local global_p, global_x, global_y
+function pdf._latelua(p, x, y, func, ...)
+  global_p, global_x, global_y = p, x, y
+  return func(...)
+end
+function pdf.write(mode, text, x, y, p)
+  x, y, p = x or global_x, y or global_y, p or global_p
+  if mode == "direct" then
+    topage(p)
+    p.strings[#p.strings + 1] = text
+  elseif mode == "origin" then
+    write_matrix(p, 1, 0, 0, 1, x, y)
+    topage(p)
+    p.strings[#p.strings + 1] = text
+    write_matrix(p, 1, 0, 0, 1, -x, -y)
+  else
+    write(format('Literal type %s unsupported', mode))
+  end
+end
 local ondemandmeta = {
   __index = function(t, k)
     t[k] = {}
@@ -494,7 +514,7 @@ local function writeresources(p)
   return concat(result)
 end
 local fontnames = setmetatable({}, {__index = function(t, k) local res = format("F%i", k) t[k] = res return res end})
-return function(file, n, fontdirs, usedglyphs)
+return function(file, n, fontdirs, usedglyphs, colorstacks)
   setmetatable(usedglyphs, ondemandmeta)
   local linkcontext = file.linkcontext
   if not linkcontext then
@@ -502,6 +522,7 @@ return function(file, n, fontdirs, usedglyphs)
     file.linkcontext = linkcontext
   end
   local p = {
+    is_page = not not colorstacks,
     file = file,
     mode = 3,
     strings = {},
@@ -521,6 +542,17 @@ return function(file, n, fontdirs, usedglyphs)
     annots = {},
     linkcontext = file.linkcontext,
   }
+  if colorstacks then
+    for i=1, #colorstacks do
+      local colorstack = colorstacks[i]
+      if colorstack.page then
+        local stack = colorstack.page_stack
+        if colorstack.default ~= stack[#stack] then
+          pdf.write(colorstack.mode, stack[#stack], 0, 0, p)
+        end
+      end
+    end
+  end
   nodehandler[n.id](p, n, 0, 0, n, nil, 0)
   -- nodehandler[n.id](p, n, 0, n.depth, n)
   topage(p)
