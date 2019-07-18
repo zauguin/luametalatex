@@ -5,9 +5,9 @@ local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() r
 local usedglyphs = {}
 token.luacmd("shipout", function()
   local voff = node.new'kern'
-  voff.kern = tex.voffset + tex.sp'1in'
+  voff.kern = tex.voffset + pdf.variable.horigin
   voff.next = token.scan_list()
-  voff.next.shift = tex.hoffset + tex.sp'1in'
+  voff.next.shift = tex.hoffset + pdf.variable.vorigin
   local list = node.vpack(voff)
   list.height = tex.pageheight
   list.width = tex.pagewidth
@@ -33,3 +33,14 @@ callback.register("stop_run", function()
   pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/1.7/Pages %i 0 R>>]], pfile:writepages()))
   pfile:close()
 end, "Finish PDF file")
+token.luacmd("pdfvariable", function()
+  for n, t in pairs(pdf.variable_tokens) do
+    if token.scan_keyword(n) then
+      token.put_next(t)
+      return
+    end
+  end
+  -- The following error message gobbles the next word as a side effect.
+  -- This is intentional to make error-recovery easier.
+  error(string.format("Unknown PDF variable %s", token.scan_string()))
+end)

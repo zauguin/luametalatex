@@ -2,6 +2,11 @@
 \catcode`\^^^^ffff=11
 \catcode`\@=11
 \toks0{%
+  do
+  local function frozen(s)
+    local t = token.create(s)
+    return token.new(t.mode, t.command)
+  end
   local dimen_cmd = token.command_id'assign_dimen'
   local tex_params = {}
   local texmeta = getmetatable(tex)
@@ -27,11 +32,35 @@
       return texmetaoldnewindex(t, k, v)
     end
   end
+  local pdf_params = {}
+  pdf.variable_tokens = pdf_params
+  pdf.variable = setmetatable({}, {
+    __index = function(t, k)
+      local v = pdf_params[k]
+      if v then
+        if v.command == dimen_cmd then
+          return tex.dimen[v.index]
+        end
+      else
+        return texmetaoldindex(t, k)
+      end
+    end,
+    __newindex = function(t, k, v)
+      local p = pdf_params[k]
+      if p then
+        if p.command == dimen_cmd then
+          tex.dimen[p.index] = v
+        end
+      else
+        return texmetaoldnewindex(t, k, v)
+      end
+    end,
+  })
 }
 \def\InternalAlloc#1#2#3#4#5{%
   \csname new#3\endcsname#1%
   \global#1=#5\relax
-  \etoksapp0{#2_params["\luaescapestring{#4}"] = token.create"\luaescapestring{\csstring#1}"}
+  \etoksapp0{#2_params["\luaescapestring{#4}"] = frozen"\luaescapestring{\csstring#1}"}
 }
 \def\internalAlloc#1#2#3{%
   \expandafter\InternalAlloc\csname ^^^^fffe#3@#1\endcsname{#1}{#2}{#3}%
@@ -39,11 +68,16 @@
 \def\texAlloc#1#2{%
   \expandafter\InternalAlloc\csname #2\endcsname{tex}{#1}{#2}%
 }
+\def\pdfAlloc{%
+  \internalAlloc{pdf}%
+}
 \texAlloc{dimen}{pageheight}{11in}
 \texAlloc{dimen}{pagewidth}{8.5in}
-% \internalAlloc{tex}{dimen}{pagewidth}
+\pdfAlloc{dimen}{horigin}{1in}
+\pdfAlloc{dimen}{vorigin}{1in}
 \directlua{
-  lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0]
+  lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0] .. "end"
   \the\toks0
+  end
 }
 \endgroup
