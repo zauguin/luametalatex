@@ -83,7 +83,7 @@ local function totext(p, fid)
 end
 local inspect = require'inspect'
 local function show(t) print(inspect(t)) end
-local function topage(p)
+function topage(p)
   local last = p.mode
   if last == page then return end
   if last <= text then
@@ -372,14 +372,16 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
       stack[#stack] = nil
       x, y = top[1], top[2]
     elseif cmd[1] == "special" then
-      -- ???
+      error[[specials aren't supported yet]] -- TODO
     elseif cmd[1] == "pdf" then
-      -- ???
+      pdf.write(cmd[3] and cmd[2] or "origin", cmd[3], x, y, p)
     elseif cmd[1] == "lua" then
       cmd = cmd[2]
       if type(cmd) == "string" then cmd = load(cmd) end
       assert(type(cmd) == "function")
+      pdf._latelua(p, x, y, cmd, fid, c)
     elseif cmd[1] == "image" then
+      error[[images aren't supported yet]] -- TODO
       -- ???
     -- else
       -- NOP, comment and invalid commands ignored
@@ -431,19 +433,7 @@ end
 function nodehandler.whatsit(p, n, ...) -- Whatsit?
   return whatsithandler[n.subtype](p, n, ...)
 end
-function whatsithandler.pdf_literal(p, n, x, y)
-  if n.mode == 2 then
-    topage(p)
-    p.strings[#p.strings + 1] = n.data
-  elseif n.mode == 0 then
-    write_matrix(p, 1, 0, 0, 1, x, y)
-    topage(p)
-    p.strings[#p.strings + 1] = n.data
-    write_matrix(p, 1, 0, 0, 1, -x, -y)
-  else
-    write(format('Literal type %i', n.mode))
-  end
-end
+--[[ -- These use the old whatsit handling system which might get removed.
 function whatsithandler.pdf_save(p, n, x, y, outer)
   topage(p)
   p.strings[#p.strings + 1] = 'q'
@@ -471,9 +461,10 @@ function whatsithandler.pdf_end_link(p, n, x, y, outer, _, level)
   local links = p.linkcontext
   local link = links[#links]
   links[#links] = nil
-  if link.level ~= level then error[[Wrong link level]] end
+  if link.level ~= level then error"Wrong link level" end
   addlinkpoint(p, link, x, y, outer, true)
 end
+]]
 local global_p, global_x, global_y
 function pdf._latelua(p, x, y, func, ...)
   global_p, global_x, global_y = p, x, y
@@ -481,8 +472,16 @@ function pdf._latelua(p, x, y, func, ...)
 end
 function pdf.write(mode, text, x, y, p)
   x, y, p = x or global_x, y or global_y, p or global_p
-  if mode == "direct" then
+  if mode == "page" then
     topage(p)
+    p.strings[#p.strings + 1] = text
+  elseif mode == "text" then
+    topage(p)
+    p.strings[#p.strings + 1] = text
+  elseif mode == "direct" then
+    if p.mode ~= page then
+      totext(p, p.font.fid)
+    end
     p.strings[#p.strings + 1] = text
   elseif mode == "origin" then
     write_matrix(p, 1, 0, 0, 1, x, y)

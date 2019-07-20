@@ -63,6 +63,9 @@ function pdf.newcolorstack(default, mode, page)
   }
   return idx
 end
+local function do_literal(prop, p, n, x, y)
+  pdf.write(prop.mode, prop.data, x, y, p)
+end
 local function do_colorstack(prop, p, n, x, y)
   local colorstack = prop.colorstack
   local stack
@@ -111,13 +114,19 @@ local function write_colorstack()
     })
   node.write(whatsit)
 end
+local function scan_literal_mode()
+  return token.scan_keyword"direct" and "direct"
+      or token.scan_keyword"page" and "page"
+      or token.scan_keyword"text" and "text"
+      or token.scan_keyword"direct" and "direct"
+      or token.scan_keyword"raw" and "raw"
+      or "origin"
+end
 token.luacmd("pdffeedback", function()
   if token.scan_keyword"colorstackinit" then
     local page = token.scan_keyword'page'
               or (token.scan_keyword'nopage' and false) -- If you want to pass "page" as mode
-    local mode = token.scan_keyword'direct' and 'direct'
-              or token.scan_keyword'page' and 'page'
-              or 'origin'
+    local mode = scan_literal_mode()
     local default = token.scan_string()
     tex.sprint(tostring(pdf.newcolorstack(default, mode, page)))
   else
@@ -129,9 +138,19 @@ end)
 token.luacmd("pdfextension", function()
   if token.scan_keyword"colorstack" then
     write_colorstack()
+  elseif token.scan_keyword"literal" then
+    local mode = scan_literal_mode()
+    local literal = token.scan_string()
+    local whatsit = node.new(whatsit_id, whatsits.pdf_literal)
+    node.setproperty(whatsit, {
+        handle = do_literal,
+        mode = mode,
+        data = literal,
+      })
+    node.write(whatsit)
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
     error(string.format("Unknown PDF extension %s", token.scan_word()))
   end
-end)
+end, "protected")
