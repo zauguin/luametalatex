@@ -336,6 +336,7 @@ kpse.set_maketex("kpse_fmt_format", true)
 bit32 = require'luametalatex-bit32'
 kpse.init_prog("LUATEX", 400, "nexthi", nil)
 status.init_kpse = 1
+require'luametalatex-init-config'
 status.safer_option = 0
 local read_tfm = require'luametalatex-font-tfm'
 read_vf = require'luametalatex-font-vf'
