@@ -71,8 +71,10 @@
 \def\pdfAlloc{%
   \internalAlloc{pdf}%
 }
-\texAlloc{dimen}{pageheight}{11in}
-\texAlloc{dimen}{pagewidth}{8.5in}
+\texAlloc{count}{outputmode}{1} % The "traditional" default would be 0,
+                                % but we do not actually support that.
+\texAlloc{dimen}{pageheight}{210mm}
+\texAlloc{dimen}{pagewidth}{297mm}
 \pdfAlloc{dimen}{horigin}{1in}
 \pdfAlloc{dimen}{vorigin}{1in}
 \directlua{

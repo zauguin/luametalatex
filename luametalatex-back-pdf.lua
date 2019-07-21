@@ -25,6 +25,27 @@ token.luacmd("shipout", function()
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
   token.scan_token()
 end, 'protected')
+local infodir = ""
+local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
+local function write_infodir(p)
+  local additional = ""
+  if not string.find(infodir, "/CreationDate", 1, false) then
+    additional = string.format("/CreationDate(%s)", creationdate)
+  end
+  if not string.find(infodir, "/ModDate", 1, false) then
+    additional = string.format("%s/ModDate(%s)", additional, creationdate)
+  end
+  if not string.find(infodir, "/Producer", 1, false) then
+    additional = string.format("%s/Producer(LuaMetaLaTeX)", additional)
+  end
+  if not string.find(infodir, "/Creator", 1, false) then
+    additional = string.format("%s/Creator(TeX)", additional)
+  end
+  if not string.find(infodir, "/PTEX.Fullbanner", 1, false) then
+    additional = string.format("%s/PTEX.Fullbanner(%s)", additional, status.banner)
+  end
+  return p:indirect(nil, string.format("<<%s%s>>", infodir, additional))
+end
 callback.register("stop_run", function()
   for fid, id in pairs(fontdirs) do
     local f = font.getfont(fid)
@@ -38,6 +59,7 @@ callback.register("stop_run", function()
   end
   pfile.root = pfile:getobj()
   pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/1.7/Pages %i 0 R>>]], pfile:writepages()))
+  pfile.info = write_infodir(pfile)
   pfile:close()
 end, "Finish PDF file")
 token.luacmd("pdfvariable", function()
@@ -49,7 +71,11 @@ token.luacmd("pdfvariable", function()
   end
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
+  --[[
   error(string.format("Unknown PDF variable %s", token.scan_word()))
+  ]] -- Delay the error to ensure luatex85.sty compatibility
+  texio.write_nl(string.format("Unknown PDF variable %s", token.scan_word()))
+  tex.sprint"\\unexpanded{\\undefinedpdfvariable}"
 end)
 local whatsit_id = node.id'whatsit'
 local whatsits = node.whatsits()
@@ -129,6 +155,8 @@ token.luacmd("pdffeedback", function()
     local mode = scan_literal_mode()
     local default = token.scan_string()
     tex.sprint(tostring(pdf.newcolorstack(default, mode, page)))
+  elseif token.scan_keyword"creationdate" then
+    tex.sprint(creationdate)
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
@@ -148,6 +176,8 @@ token.luacmd("pdfextension", function()
         data = literal,
       })
     node.write(whatsit)
+  elseif token.scan_keyword"info" then
+    infodir = infodir .. token.scan_string()
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.

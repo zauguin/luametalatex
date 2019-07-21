@@ -52,7 +52,8 @@ local function trailer(pdf)
   offsets[linked+1] = '\0\0\0\0\255'
   pdf[nextid] = assigned
   -- TODO: Add an /ID according to 14.4
-  stream(pdf, nextid, format([[/Type/XRef/Size %i/W[1 3 1]/Root %i 0 R]], nextid+1, pdf.root), table.concat(offsets))
+  local info = pdf.info and string.format("/Info %i 0 R", pdf.info) or ""
+  stream(pdf, nextid, format([[/Type/XRef/Size %i/W[1 3 1]/Root %i 0 R%s]], nextid+1, pdf.root, info), table.concat(offsets))
   pdf.file:write('startxref\n', myoff, '\n%%EOF')
 end
 local function close(pdf)
