@@ -77,6 +77,8 @@
 \texAlloc{dimen}{pagewidth}{297mm}
 \pdfAlloc{dimen}{horigin}{1in}
 \pdfAlloc{dimen}{vorigin}{1in}
+\pdfAlloc{count}{majorversion}{1}
+\pdfAlloc{dimen}{minorversion}{7}
 \directlua{
   lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0] .. "end"
   \the\toks0
