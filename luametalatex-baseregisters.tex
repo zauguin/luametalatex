@@ -8,6 +8,7 @@
     return token.new(t.mode, t.command)
   end
   local dimen_cmd = token.command_id'assign_dimen'
+  local count_cmd = token.command_id'assign_int'
   local tex_params = {}
   local texmeta = getmetatable(tex)
   local texmetaoldindex = texmeta.__index
@@ -15,7 +16,9 @@
   function texmeta.__index(t, k)
     local v = tex_params[k]
     if v then
-      if v.command == dimen_cmd then
+      if v.command == count_cmd then
+        return tex.count[v.index]
+      elseif v.command == dimen_cmd then
         return tex.dimen[v.index]
       end
     else
@@ -25,7 +28,9 @@
   function texmeta.__newindex(t, k, v)
     local p = tex_params[k]
     if p then
-      if p.command == dimen_cmd then
+      if p.command == count_cmd then
+        tex.count[p.index] = v
+      elseif p.command == dimen_cmd then
         tex.dimen[p.index] = v
       end
     else
@@ -38,7 +43,9 @@
     __index = function(t, k)
       local v = pdf_params[k]
       if v then
-        if v.command == dimen_cmd then
+        if v.command == count_cmd then
+          return tex.count[v.index]
+        elseif v.command == dimen_cmd then
           return tex.dimen[v.index]
         end
       else
@@ -48,7 +55,9 @@
     __newindex = function(t, k, v)
       local p = pdf_params[k]
       if p then
-        if p.command == dimen_cmd then
+        if p.command == count_cmd then
+          tex.count[p.index] = v
+        elseif p.command == dimen_cmd then
           tex.dimen[p.index] = v
         end
       else
@@ -71,6 +80,7 @@
 \def\pdfAlloc{%
   \internalAlloc{pdf}%
 }
+\texAlloc{count}{suppressfontnotfounderror}{0}
 \texAlloc{count}{outputmode}{1} % The "traditional" default would be 0,
                                 % but we do not actually support that.
 \texAlloc{dimen}{pageheight}{210mm}
@@ -78,7 +88,7 @@
 \pdfAlloc{dimen}{horigin}{1in}
 \pdfAlloc{dimen}{vorigin}{1in}
 \pdfAlloc{count}{majorversion}{1}
-\pdfAlloc{dimen}{minorversion}{7}
+\pdfAlloc{count}{minorversion}{7}
 \directlua{
   lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0] .. "end"
   \the\toks0

@@ -13,6 +13,7 @@ function token.luacmd(name, func, ...)
   local idx = new_luafunction(name)
   set_lua(name, idx, ...)
   functions[idx] = func
+  return idx
 end
 local properties = node.get_properties_table()
 -- setmetatable(node.direct.get_properties_table(), {
@@ -28,7 +29,7 @@ local whatsits = {
   [0] = "open",
         "write",
         "close",
-        nil,
+        "special",
         nil,
         nil,
         "save_pos",

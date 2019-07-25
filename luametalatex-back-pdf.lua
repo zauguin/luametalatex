@@ -59,7 +59,7 @@ callback.register("stop_run", function()
   end
   pfile.root = pfile:getobj()
   pfile.version = string.format("%i.%i", pdf.variable.majorversion, pdf.variable.minorversion)
-  pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%i.%i/Pages %i 0 R>>]], pfile.version, pfile:writepages()))
+  pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R>>]], pfile.version, pfile:writepages()))
   pfile.info = write_infodir(pfile)
   pfile:close()
 end, "Finish PDF file")
