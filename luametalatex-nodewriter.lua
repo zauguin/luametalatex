@@ -1,7 +1,32 @@
 local format = string.format
 local concat = table.concat
 local write = texio.write_nl
-local properties = node.get_properties_table()
+local direct = node.direct
+local properties = direct.get_properties_table()
+local tonode = direct.tonode
+local todirect = direct.todirect
+local getid = direct.getid
+local traverse = direct.traverse
+local getsubtype = direct.getsubtype
+local setsubtype = direct.setsubtype
+local getdepth = direct.getdepth
+local getheight = direct.getheight
+local getwidth = direct.getwidth
+local setdepth = direct.setdepth
+local setheight = direct.setheight
+local setwidth = direct.setwidth
+local getshift = direct.getshift
+local getlist = direct.getlist
+local getkern = direct.getkern
+local getreplace = direct.getreplace
+local getleader = direct.getleader
+local setfont = direct.setfont
+local getfont = direct.getfont
+local getoffsets = direct.getoffsets
+local getnext = direct.getnext
+local getexpansion = direct.getexpansion
+local getchar = direct.getchar
+local rangedimensions = direct.rangedimensions
 local function doublekeyed(t, id2name, name2id, index)
   return setmetatable(t, {
       __index = index,
@@ -17,7 +42,7 @@ local function doublekeyed(t, id2name, name2id, index)
 end
 local nodehandler = (function()
   local function unknown_handler(_, n, x, y)
-    write(format("Sorry, but the PDF backend does not support %q (id = %i) nodes right now. The supplied node will be dropped at coordinates (%i, %i).", node.type(n.id), n.id, x, y))
+    write(format("Sorry, but the PDF backend does not support %q (id = %i) nodes right now. The supplied node will be dropped at coordinates (%i, %i).", node.type(getid(n)), getid(n), x, y))
   end
   return doublekeyed({}, node.type, node.id, function()
     return unknown_handler
@@ -26,11 +51,11 @@ end)()
 local whatsithandler = (function()
   local whatsits = node.whatsits()
   local function unknown_handler(p, n, x, y, ...)
-    local prop = properties[n] or node.getproperty(n)
+    local prop = properties[n]-- or node.getproperty(n)
     if prop and prop.handle then
       prop:handle(p, n, x, y, ...)
     else
-      write(format("Sorry, but the PDF backend does not support %q (id = %i) whatsits right now. The supplied node will be dropped at coordinates (%i, %i).", whatsits[n.subtype], n.subtype, x, y))
+      write(format("Sorry, but the PDF backend does not support %q (id = %i) whatsits right now. The supplied node will be dropped at coordinates (%i, %i).", whatsits[getsubtype(n)], getsubtype(n), x, y))
     end
   end
   return doublekeyed({}, function(n)return whatsits[n]end, function(n)return whatsits[n]end, function()
@@ -173,8 +198,8 @@ local function addlinkpoint(p, link, x, y, list, final)
     p.annots[#p.annots+1] = link.objnum .. " 0 R"
   end
   local m = p.matrix
-  local lx, ly = projected_point(m, x, y-(link.depth or list.depth))
-  local ux, uy = projected_point(m, x, y+(link.height or list.height))
+  local lx, ly = projected_point(m, x, y-(link.depth or getdepth(list)))
+  local ux, uy = projected_point(m, x, y+(link.height or getheight(list)))
   local n = #quads
   quads[n+1], quads[n+2], quads[n+3], quads[n+4] = lx, ly, ux, uy
   if final or (link.force_separate and (n+4)%8 == 0) then
@@ -185,20 +210,20 @@ local function addlinkpoint(p, link, x, y, list, final)
 end
 function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
   if outerlist then
-    if outerlist.id == 0 then
-      y = y - list.shift
+    if getid(outerlist) == 0 then
+      y = y - getshift(list)
     else
-      x0 = x0 + list.shift
+      x0 = x0 + getshift(list)
     end
   end
   local x = x0
   for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
       addlinkpoint(p, l, x, y, list)
   end end
-  for n in node.traverse(list.head) do
-    local next = n.next
-    local w = next and node.rangedimensions(list, n, next) or node.rangedimensions(list, n)
-    nodehandler[n.id](p, n, x, y, list, x0, level+1)
+  for n in traverse(getlist(list)) do
+    local next = getnext(n)
+    local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
+    nodehandler[getid(n)](p, n, x, y, list, x0, level+1)
     x = w + x
   end
   for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
@@ -207,29 +232,29 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
 end
 function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
   if outerlist then
-    if outerlist.id == 0 then
-      y0 = y0 - list.shift
+    if getid(outerlist) == 0 then
+      y0 = y0 - getshift(list)
     else
-      x = x + list.shift
+      x = x + getshift(list)
     end
   end
-  y0 = y0 + list.height
+  y0 = y0 + getheight(list)
   local y = y0
-  for n in node.traverse(list.head) do
-    local d, h, _ = 0, node.effective_glue(n, list) or math.tointeger(n.kern)
+  for n in traverse(getlist(list)) do
+    local d, h, _ = 0, direct.effective_glue(n, list) or math.tointeger(getkern(n))
     if not h then
-      _, h, d = node.direct.getwhd(node.direct.todirect(n))
+      _, h, d = direct.getwhd(n)
     end
     y = y - (h or 0)
-    nodehandler[n.id](p, n, x, y, list, y0, level+1)
+    nodehandler[getid(n)](p, n, x, y, list, y0, level+1)
     y = y - (d or 0)
   end
 end
 function nodehandler.rule(p, n, x, y, outer)
-  if n.width == -1073741824 then n.width = outer.width end
-  if n.height == -1073741824 then n.height = outer.height end
-  if n.depth == -1073741824 then n.depth = outer.depth end
-  local sub = n.subtype
+  if getwidth(n) == -1073741824 then setwidth(n, getwidth(outer)) end
+  if getheight(n) == -1073741824 then setheight(n, getheight(outer)) end
+  if getdepth(n) == -1073741824 then setdepth(n, getdepth(outer)) end
+  local sub = getsubtype(n)
   if sub == 1 then
     error[[We can't handle boxes yet]]
   elseif sub == 2 then
@@ -240,42 +265,42 @@ function nodehandler.rule(p, n, x, y, outer)
   elseif sub == 9 then
     error[[We can't handle outline rules yet]]
   else
-    if n.width <= 0 or n.depth + n.height <= 0 then return end
+    if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
     topage(p)
-    p.strings[#p.strings+1] = gsub(format("%f %f %f %f re f", sp2bp(x), sp2bp(y - n.depth), sp2bp(n.width), sp2bp(n.depth + n.height)), '%.?0+ ', ' ')
+    p.strings[#p.strings+1] = gsub(format("%f %f %f %f re f", sp2bp(x), sp2bp(y - getdepth(n)), sp2bp(getwidth(n)), sp2bp(getdepth(n) + getheight(n))), '%.?0+ ', ' ')
   end
 end
 function nodehandler.boundary() end
 function nodehandler.disc(p, n, x, y, list, ...) -- FIXME: I am not sure why this can happen, let's assume we can use .replace
-  for n in node.traverse(n.replace) do
-    local next = n.next
-    local w = next and node.rangedimensions(list, n, next) or node.rangedimensions(list, n)
-    nodehandler[n.id](p, n, x, y, list, ...)
+  for n in traverse(getreplace(n)) do
+    local next = getnext(n)
+    local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
+    nodehandler[getid(n)](p, n, x, y, list, ...)
     x = w + x
   end
 end
 function nodehandler.local_par() end
 function nodehandler.math() end
 function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is an interesting one.
-  local subtype = n.subtype
+  local subtype = getsubtype(n)
   if subtype < 100 then return end -- We only really care about leaders
-  local leader = n.leader
-  local w = node.effective_glue(n, outer)
-  if leader.id == 2 then -- We got a rule, this should be easy
-    if outer.id == 0 then
-      leader.width = w
+  local leader = getleader(n)
+  local w = direct.effective_glue(n, outer)
+  if getid(leader) == 2 then -- We got a rule, this should be easy
+    if getid(outer) == 0 then
+      setwidth(leader, w)
     else
-      leader.height = w
-      leader.depth = 0
+      setheight(leader, w)
+      setdepth(leader, 0)
     end
     return nodehandler.rule(p, leader, x, y, outer)
   end
-  local lwidth = outer.id == 0 and leader.width or leader.height + leader.depth
-  if outer.id ~= 0 then
+  local lwidth = getid(outer) == 0 and getwidth(leader) or getheight(leader) + getdepth(leader)
+  if getid(outer) ~= 0 then
     y = y + w
   end
   if subtype == 100 then
-    if outer.id == 0 then
+    if getid(outer) == 0 then
       local newx = ((x-origin - 1)//lwidth + 1) * lwidth + origin
       -- local newx = -(origin-x)//lwidth * lwidth + origin
       w = w + x - newx
@@ -288,7 +313,7 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
     end
   elseif subtype == 101 then
     local inner = w - (w // lwidth) * lwidth
-    if outer.id == 0 then
+    if getid(outer) == 0 then
       x = x + inner/2
     else
       y = y - inner/2
@@ -296,14 +321,14 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
   elseif subtype == 102 then
     local count = w // lwidth
     local skip = (w - count * lwidth) / (count + 1)
-    if outer.id == 0 then
+    if getid(outer) == 0 then
       x = x + skip
     else
       y = y - skip
     end
     lwidth = lwidth + skip
   elseif subtype == 103 then
-    if outer.id == 0 then
+    if getid(outer) == 0 then
       local newx = ((x - 1)//lwidth + 1) * lwidth
       w = w + x - newx
       x = newx
@@ -313,15 +338,15 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
       y = newy
     end
   end
-  local handler = nodehandler[leader.id]
-  if outer.id == 0 then
+  local handler = nodehandler[getid(leader)]
+  if getid(outer) == 0 then
     while w >= lwidth do
       handler(p, leader, x, y, outer, origin, level+1)
       w = w - lwidth
       x = x + lwidth
     end
   else
-    y = y - leader.height
+    y = y - getheight(leader)
     while w >= lwidth do
       handler(p, leader, x, y, outer, origin, level+1)
       w = w - lwidth
@@ -339,28 +364,31 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
   for _, cmd in ipairs(c.commands) do
     if cmd[1] == "node" then
       local cmd = cmd[2]
-      nodehandler[cmd.id](p, cmd, x, y, nil, ...)
-      x = x + cmd.width
+      nodehandler[getid(cmd)](p, cmd, x, y, nil, ...)
+      x = x + getwidth(cmd)
     elseif cmd[1] == "font" then
       current_font = fonts[cmd[2]]
     elseif cmd[1] == "char" then
-      local n = node.new'glyph'
-      n.subtype, n.font, n.char = 256, current_font.id, cmd[2]
+      local n = direct.new'glyph'
+      setsubtype(n, 256)
+      setfont(n, current_font.id, cmd[2])
       nodehandler.glyph(p, n, x, y, outer, ...)
-      node.free(n)
-      x = x + n.width
+      direct.free(n)
+      x = x + getwidth(n)
     elseif cmd[1] == "slot" then
-      local n = node.new'glyph'
-      n.subtype, n.font, n.char = 256, cmd[2], cmd[3]
+      local n = direct.new'glyph'
+      setsubtype(n, 256)
+      setfont(n, cmd[2], cmd[3])
       nodehandler.glyph(p, n, x, y, outer, ...)
-      node.free(n)
-      x = x + n.width
+      direct.free(n)
+      x = x + getwidth(n)
     elseif cmd[1] == "rule" then
-      local n = node.new'rule'
-      n.height, n.width = cmd[2], cmd[3]
+      local n = direct.new'rule'
+      setheight(n, cmd[2])
+      setwidth(n, cmd[3])
       nodehandler.rule(p, n, x, y, outer, ...)
-      node.free(n)
-      x = x + n.width
+      direct.free(n)
+      x = x + getwidth(n)
     elseif cmd[1] == "left" then
       x = x + cmd[2]
     elseif cmd[1] == "down" then
@@ -389,26 +417,27 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
     if #commands ~= 1 then error[[Unsupported command number]] end
     if commands[1][1] ~= "node" then error[[Unsupported command name]] end
     commands = commands[1][2]
-    nodehandler[commands.id](p, commands, x, y, nil, ...)
+    nodehandler[getid(commands)](p, commands, x, y, nil, ...)
   end
 end
 function nodehandler.glyph(p, n, x, y, ...)
-  if n.font ~= p.vfont.fid then
-    p.vfont.fid = n.font
-    p.vfont.font = font.getfont(n.font) or font.fonts[n.font]
+  if getfont(n) ~= p.vfont.fid then
+    p.vfont.fid = getfont(n)
+    p.vfont.font = font.getfont(getfont(n)) or font.fonts[getfont(n)]
   end
   local f, fid = p.vfont.font, p.vfont.fid
-  local c = f.characters[n.char]
+  local c = f.characters[getchar(n)]
   if not c then
     texio.write_nl("Missing character")
     return
   end
   if c.commands then return do_commands(p, c, f, fid, x, y, ...) end
-  toglyph(p, n.font, x + n.xoffset, y + n.yoffset, n.expansion_factor)
+  local xoffset, yoffset = getoffsets(n)
+  toglyph(p, getfont(n), x + xoffset, y + yoffset, getexpansion(n))
   local index = c.index
   if index then
     -- if f.encodingbytes == -3 then
-    if true then
+    if false then
       if index < 0x80 then
         p.pending[#p.pending+1] = match(literalescape, string.pack('>B', index))
       elseif index < 0x7F80 then
@@ -423,15 +452,15 @@ function nodehandler.glyph(p, n, x, y, ...)
       p.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size + .5), c.tounicode}
     end
   else
-    p.pending[#p.pending+1] = match(literalescape, string.char(n.char))
-    if not p.usedglyphs[n.char] then
-      p.usedglyphs[n.char] = {n.char, math.floor(c.width * 1000 / f.size + .5), c.tounicode}
+    p.pending[#p.pending+1] = match(literalescape, string.char(getchar(n)))
+    if not p.usedglyphs[getchar(n)] then
+      p.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size + .5), c.tounicode}
     end
   end
-  p.pos.x = p.pos.x + math.floor(n.width*(1+n.expansion_factor/1000000)+.5)
+  p.pos.x = p.pos.x + math.floor(getwidth(n)*(1+getexpansion(n)/1000000)+.5)
 end
 function nodehandler.whatsit(p, n, ...) -- Whatsit?
-  return whatsithandler[n.subtype](p, n, ...)
+  return whatsithandler[getsubtype(n)](p, n, ...)
 end
 --[[ -- These use the old whatsit handling system which might get removed.
 function whatsithandler.pdf_save(p, n, x, y, outer)
@@ -514,6 +543,7 @@ local function writeresources(p)
 end
 local fontnames = setmetatable({}, {__index = function(t, k) local res = format("F%i", k) t[k] = res return res end})
 return function(file, n, fontdirs, usedglyphs, colorstacks)
+  n = todirect(n)
   setmetatable(usedglyphs, ondemandmeta)
   local linkcontext = file.linkcontext
   if not linkcontext then
@@ -552,8 +582,8 @@ return function(file, n, fontdirs, usedglyphs, colorstacks)
       end
     end
   end
-  nodehandler[n.id](p, n, 0, 0, n, nil, 0)
-  -- nodehandler[n.id](p, n, 0, n.depth, n)
+  nodehandler[getid(n)](p, n, 0, 0, n, nil, 0)
+  -- nodehandler[getid(n)](p, n, 0, getdepth(n), n)
   topage(p)
   return concat(p.strings, '\n'), writeresources(p), (p.annots[1] and string.format("/Annots[%s]", table.concat(p.annots, ' ')) or "")
 end

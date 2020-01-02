@@ -339,10 +339,10 @@ status.init_kpse = 1
 require'luametalatex-init-config'
 status.safer_option = 0
 local read_tfm = require'luametalatex-font-tfm'
-read_vf = require'luametalatex-font-vf'
+local read_vf = require'luametalatex-font-vf'
 font.read_tfm = read_tfm
 font.read_vf = read_vf
-local reserved_ids = -1
+require'module'
 font.fonts = {}
 function font.getfont(id)
   return font.fonts[id]
@@ -352,24 +352,20 @@ pdf = {
     return id
   end,
 }
-callback.register('define_font', function(name, size)
-  if status.ini_version then
-    reserved_ids = font.nextid()-1
-    lua.prepared_code[#lua.prepared_code+1] = string.format("font.define(%i, font.read_tfm(%q, %i))", reserved_ids, name, size)
-  end
-  local f = read_tfm(name, size)
-  font.fonts[font.nextid()-1] = f
-  return f
-end)
 local olddefinefont = font.define
-function font.define(i, f)
-  if not f then
-    f = i
-    i = font.nextid(true)
-  end
+function font.define(f)
+  local i = olddefinefont(f)
   font.fonts[i] = f
-  return olddefinefont(i, f)
+  return i
 end
+callback.register('define_font', function(name, size)
+  local f = read_tfm(name, size)
+  local id = font.define(f)
+  if status.ini_version then
+    lua.prepared_code[#lua.prepared_code+1] = string.format("assert(%i == font.define(font.read_tfm(%q, %i)))", id, name, size)
+  end
+  return id
+end)
 -- do
 --   local register = callback.register
 --   function callback.register(...)
@@ -391,12 +387,7 @@ callback.register('show_error_message', function()
   texio.write_nl(status.lasterrorstring)
 end)
 callback.register('pre_dump', function()
-  -- for k,v in pairs(callback.list()) do print('CB', k,v) end
-  lua.bytecode[1], msg = load("do local id "
-                             .. "repeat id = font.nextid(true) "
-                             .. "until id == " .. reserved_ids
-                             .. " end "
-                             .. table.concat(lua.prepared_code, ' '))
+  lua.bytecode[1] = assert(load(table.concat(lua.prepared_code, ' ')))
 end)
 if status.ini_version then
   lua.prepared_code = {}

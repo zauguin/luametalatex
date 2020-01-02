@@ -83,12 +83,14 @@
 \texAlloc{count}{suppressfontnotfounderror}{0}
 \texAlloc{count}{outputmode}{1} % The "traditional" default would be 0,
                                 % but we do not actually support that.
-\texAlloc{dimen}{pageheight}{210mm}
-\texAlloc{dimen}{pagewidth}{297mm}
+\texAlloc{dimen}{pageheight}{297mm}
+\texAlloc{dimen}{pagewidth}{210mm}
 \pdfAlloc{dimen}{horigin}{1in}
 \pdfAlloc{dimen}{vorigin}{1in}
 \pdfAlloc{count}{majorversion}{1}
 \pdfAlloc{count}{minorversion}{7}
+\pdfAlloc{count}{compresslevel}{0} % 0 is actually the only supported value right now, so this is basically ignored
+\pdfAlloc{count}{objcompresslevel}{0} % see above
 \directlua{
   lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0] .. "end"
   \the\toks0

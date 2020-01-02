@@ -209,7 +209,7 @@ local function buildfont0(pdf, fontdir, usedcids)
   local enc
   if fontdir.encodingbytes == 1 then
     enc = cidmap1byte(pdf)
-  elseif true then -- FIXME: This should only be used for encodingbyzes == -3 (variable, max 3)
+  elseif false then -- FIXME: This should only be used for encodingbyzes == -3 (variable, max 3)
     fontdir.encodingbytes = -3 -- FIXME
     enc = cidmap3byte(pdf)
   else

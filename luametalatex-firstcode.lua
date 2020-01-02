@@ -15,7 +15,7 @@ function token.luacmd(name, func, ...)
   functions[idx] = func
   return idx
 end
-local properties = node.get_properties_table()
+local properties = node.direct.get_properties_table()
 -- setmetatable(node.direct.get_properties_table(), {
 --     __index = function(t, id)
 --       local new = {}
@@ -110,9 +110,9 @@ token.luacmd("openout", function(_, immediate) -- \openout
   if immediate == "immediate" then
     do_openout(props)
   else
-    local whatsit = node.new(whatsit_id, whatsits.open)
+    local whatsit = node.direct.new(whatsit_id, whatsits.open)
     properties[whatsit] = props
-    node.write(whatsit)
+    node.direct.write(whatsit)
   end
 end, "protected")
 local function do_closeout(p)
@@ -127,9 +127,9 @@ token.luacmd("closeout", function(_, immediate) -- \closeout
   if immediate == "immediate" then
     do_closeout(props)
   else
-    local whatsit = node.new(whatsit_id, whatsits.close)
+    local whatsit = node.direct.new(whatsit_id, whatsits.close)
     properties[whatsit] = props
-    node.write(whatsit)
+    node.direct.write(whatsit)
   end
 end, "protected")
 local function do_write(p)
@@ -148,9 +148,9 @@ token.luacmd("write", function(_, immediate) -- \write
   if immediate == "immediate" then
     do_write(props)
   else
-    local whatsit = node.new(whatsit_id, whatsits.write)
+    local whatsit = node.direct.new(whatsit_id, whatsits.write)
     properties[whatsit] = props
-    node.write(whatsit)
+    node.direct.write(whatsit)
   end
 end, "protected")
 local lua_call_cmd = token.command_id'lua_call'

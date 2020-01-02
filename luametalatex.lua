@@ -83,7 +83,7 @@ local dir = absdir(os.selfdir)
 local dirseparators = {((lpeg.S'\\/'^1 + 1 * lpeg.P':' * lpeg.S'\\/'^-1) * lpeg.Cp() * ((1-lpeg.S'\\/')^0*lpeg.S'\\/'*lpeg.Cp())^0):match(dir)}
 -- First step: Find our actual format.
 local init_script = format .. "-init.lua"
-local texmf_dir = "tex/lualatex/" .. format .. '/' .. init_script
+local texmf_dir = "tex/luametalatex/" .. format .. '/' .. init_script
 local paths = {
   init_script,
   "share/texmf-local/" .. texmf_dir,

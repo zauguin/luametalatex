@@ -10,12 +10,13 @@ local colorstacks = {{
     default = "0 g 0 G",
     page_stack = {"0 g 0 G"},
   }}
+token.scan_list = token.scan_box -- They are equal if no parameter is present
 token.luacmd("shipout", function()
   local voff = node.new'kern'
   voff.kern = tex.voffset + pdf.variable.vorigin
   voff.next = token.scan_list()
   voff.next.shift = tex.hoffset + pdf.variable.horigin
-  local list = node.vpack(voff)
+  local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
   list.height = tex.pageheight
   list.width = tex.pagewidth
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
