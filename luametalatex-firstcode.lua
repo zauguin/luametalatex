@@ -153,6 +153,7 @@ token.luacmd("write", function(_, immediate) -- \write
     node.direct.write(whatsit)
   end
 end, "protected")
+
 local lua_call_cmd = token.command_id'lua_call'
 token.luacmd("immediate", function() -- \immediate
   local next_tok = token.scan_token()
@@ -166,17 +167,17 @@ end, "protected")
 --   local name = token.scan_string()
 --   print('Missing \\pdf' .. name)
 -- end
-local prepared_code = lua.bytecode[1]
-if prepared_code then
+if status.ini_version then
+  function fixupluafunctions()
+    tex.setcount("global", "e@alloc@luafunction@count", predefined_luafunctions)
+  end
+else
+  local prepared_code = lua.bytecode[1]
   prepared_code()
-  prepared_code, lua.bytecode[1] = nil, nil
+  lua.bytecode[1] = nil
   function fixupluafunctions()
     new_luafunction = luatexbase.new_luafunction
     fixupluafunctions = nil
-  end
-else
-  function fixupluafunctions()
-    tex.setcount("global", "e@alloc@luafunction@count", predefined_luafunctions)
   end
 end
 require'luametalatex-back-pdf'
