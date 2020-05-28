@@ -30,6 +30,7 @@ kpse.init_prog("LUATEX", 400, "nexthi", nil)
 status.init_kpse = 1
 require'luametalatex-init-config'
 status.safer_option = 0
+status.shell_escape = 0
 local read_tfm = require'luametalatex-font-tfm'
 local read_vf = require'luametalatex-font-vf'
 font.read_tfm = read_tfm
@@ -58,10 +59,6 @@ callback.register('define_font', function(name, size)
   end
   return id
 end)
--- callback.register('terminal_input', function(prompt)
-  -- print('Input expected: ', prompt)
-  -- return 'AAA'
--- end)
 callback.register('find_log_file', function(name) return name end)
 -- callback.register('find_read_file', function(i, name) return kpse.find_file(name, 'tex', true) end)
 callback.register('find_data_file', function(name, ...) return kpse.find_file(name, 'tex', true) end)
@@ -88,16 +85,17 @@ callback.register('show_error_message', function()
   texio.write_nl(status.lasterrorstring)
 end)
 callback.register('pre_dump', function()
+  lua.prepared_code[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())
   lua.bytecode[1] = assert(load(table.concat(lua.prepared_code, ' ')))
 end)
 function texconfig.init()
+  lua.bytecode[2]()
   if not status.ini_version then
-    lua.bytecode[2]()
     lua.bytecode[2] = nil
   end
 end
 if status.ini_version then
-  lua.prepared_code = {}
+  lua.prepared_code = {false}
   local code = package.searchers[2]('luametalatex-firstcode')
   if type(code) == "string" then error(string.format("Initialization code not found %s", code)) end
   lua.bytecode[2] = code

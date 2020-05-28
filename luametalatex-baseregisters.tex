@@ -91,9 +91,23 @@
 \pdfAlloc{count}{minorversion}{7}
 \pdfAlloc{count}{compresslevel}{0} % 0 is actually the only supported value right now, so this is basically ignored
 \pdfAlloc{count}{objcompresslevel}{0} % see above
-\directlua{
-  lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0] .. "end"
-  \the\toks0
+
+\texAlloc{count}{bodydirection}{0}
+\texAlloc{count}{pagedirection}{0}
+\etoksapp0{
+  function tex.getbodydir() return tex.bodydirection end
+  function tex.getpagedir() return tex.pagedirection end
+  function tex.setbodydir(i) tex.bodydirection = i end
+  function tex.setpagedir(i) tex.pagedirection = i end
+  local dir_regs = require 'luametalatex-dir-registers'
+  dir_regs 'textdir'
+  dir_regs 'bodydir'
+  dir_regs 'pagedir'
   end
+}
+
+\directlua{
+  lua.prepared_code[\csstring#lua.prepared_code+1] = tex.toks[0]
+  \the\toks0
 }
 \endgroup

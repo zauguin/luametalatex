@@ -1,7 +1,7 @@
 local pdf = pdf
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
-local pfile = newpdf.open(tex.jobname .. '.pdf')
+local pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
 local colorstacks = {{
@@ -12,6 +12,9 @@ local colorstacks = {{
   }}
 token.scan_list = token.scan_box -- They are equal if no parameter is present
 token.luacmd("shipout", function()
+  if not pfile then
+    pfile = newpdf.open(tex.jobname .. '.pdf')
+  end
   local voff = node.new'kern'
   voff.kern = tex.voffset + pdf.variable.vorigin
   voff.next = token.scan_list()
@@ -25,7 +28,7 @@ token.luacmd("shipout", function()
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
   token.scan_token()
-end, 'protected')
+end, 'force', 'protected')
 local infodir = ""
 local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
 local function write_infodir(p)
@@ -48,6 +51,9 @@ local function write_infodir(p)
   return p:indirect(nil, string.format("<<%s%s>>", infodir, additional))
 end
 callback.register("stop_run", function()
+  if not pfile then
+    return
+  end
   for fid, id in pairs(fontdirs) do
     local f = font.getfont(fid)
     local psname = f.psname or f.fullname

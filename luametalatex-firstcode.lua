@@ -3,15 +3,50 @@ local functions = lua.getfunctionstable()
 -- the functions table every time the getter is called
 function lua.get_functions_table() return functions end
 local set_lua = token.set_lua
+-- There are two approaches to manage luafunctions ids without triggering
+-- issues with ltluatex assigned numbers: Originally we assigned numbers
+-- starting with 1, then switched to luatexbase ASAP and synchronised both
+-- numbering schemes. But there is a useful quirk in ltluatex's luafunction
+-- allocator: It only uses numbers upto 65535, so we can just use bigger
+-- numbers. (This might have negative repercussins on performance because it
+-- probably doesn't store the function in the array part of the Lua table.
+-- Let's reconsider if this ever becomes a problem.
 -- local new_luafunction = luatexbase.new_luafunction
-local predefined_luafunctions = 0
+local predefined_luafunctions = status.ini_version and 65535 -- 1<<16 - 1 -- We start with 1<<16
 local function new_luafunction(name)
-  predefined_luafunctions = predefined_luafunctions + 1
-  return predefined_luafunctions
+  if predefined_luafunctions then
+    predefined_luafunctions = predefined_luafunctions + 1
+    return predefined_luafunctions
+  else
+    error[[Here only preexisting luafunctions should be set]]
+  end
 end
+local undefined_cmd = token.command_id'undefined_cs'
+local lua_call_cmd = token.command_id'lua_call'
+local lua_value_cmd = token.command_id'lua_value'
+local lua_expandable_call_cmd = token.command_id'lua_expandable_call'
 function token.luacmd(name, func, ...)
-  local idx = new_luafunction(name)
-  set_lua(name, idx, ...)
+  local idx
+  local tok = token.create(name)
+  local cmd = tok.command
+  if cmd == lua_value_cmd then
+    idx = tok.mode
+  elseif cmd == lua_call_cmd then
+    idx = tok.mode
+  elseif cmd == lua_expandable_call_cmd then
+    idx = tok.mode
+  elseif ... == 'force' then
+    idx = new_luafunction(name)
+    set_lua(name, idx, select(2, ...))
+  elseif cmd == undefined_cmd then
+    idx = new_luafunction(name)
+    set_lua(name, idx, ...)
+  else
+    error(tok.cmdname)
+  end
+  if functions[idx] then
+    error[[Already defined]]
+  end
   functions[idx] = func
   return idx
 end
@@ -154,13 +189,12 @@ token.luacmd("write", function(_, immediate) -- \write
   end
 end, "protected")
 
-local lua_call_cmd = token.command_id'lua_call'
 token.luacmd("immediate", function() -- \immediate
   local next_tok = token.scan_token()
   if next_tok.command ~= lua_call_cmd then
     return token.put_next(next_tok)
   end
-  local function_id = next_tok.index
+  local function_id = next_tok.mode
   functions[function_id](function_id, 'immediate')
 end, "protected")
 -- functions[43] = function() -- \pdfvariable
@@ -169,15 +203,18 @@ end, "protected")
 -- end
 if status.ini_version then
   function fixupluafunctions()
-    tex.setcount("global", "e@alloc@luafunction@count", predefined_luafunctions)
+    return predefined_luafunctions
   end
 else
+  function fixupluafunctions(i)
+    predefined_luafunctions = i
+  end
   local prepared_code = lua.bytecode[1]
   prepared_code()
   lua.bytecode[1] = nil
-  function fixupluafunctions()
-    new_luafunction = luatexbase.new_luafunction
-    fixupluafunctions = nil
-  end
+  -- function fixupluafunctions()
+    -- new_luafunction = luatexbase.new_luafunction
+    -- fixupluafunctions = nil
+  -- end
 end
 require'luametalatex-back-pdf'
