@@ -51,6 +51,7 @@ function token.luacmd(name, func, ...)
   return idx
 end
 local properties = node.direct.get_properties_table()
+node.direct.properties = properties
 -- setmetatable(node.direct.get_properties_table(), {
 --     __index = function(t, id)
 --       local new = {}
@@ -218,3 +219,25 @@ else
   -- end
 end
 require'luametalatex-back-pdf'
+require'luametalatex-node-luaotfload'
+
+local integer_code do
+  local value_values = token.values'value'
+  for i=0,#value_values do
+    if value_values[i] == "integer" then
+      integer_code = i
+      break
+    end
+  end
+end
+token.luacmd("Umathcodenum", function(_, scanning)
+  if scanning then
+    local class, family, char = tex.getmathcodes (token.scan_int())
+    return integer_code, char | (class | family << 3) << 21
+  else
+    local char = token.scan_int()
+    local mathcode = token.scan_int()
+    tex.setmathcodes(char, (mathcode >> 21) & 7, mathcode >> 24, mathcode & 0x1FFFFF)
+  end
+end, "force", "global", "value")
+

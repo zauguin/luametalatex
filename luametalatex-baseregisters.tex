@@ -9,6 +9,7 @@
   end
   local dimen_cmd = token.command_id'assign_dimen'
   local count_cmd = token.command_id'assign_int'
+  local toks_cmd = token.command_id'assign_toks'
   local tex_params = {}
   local texmeta = getmetatable(tex)
   local texmetaoldindex = texmeta.__index
@@ -20,6 +21,8 @@
         return tex.count[v.index]
       elseif v.command == dimen_cmd then
         return tex.dimen[v.index]
+      elseif v.command == toks_cmd then
+        return tex.toks[v.index]
       end
     else
       return texmetaoldindex(t, k)
@@ -32,6 +35,8 @@
         tex.count[p.index] = v
       elseif p.command == dimen_cmd then
         tex.dimen[p.index] = v
+      elseif p.command == toks_cmd then
+        tex.toks[p.index] = v
       end
     else
       return texmetaoldnewindex(t, k, v)
@@ -47,6 +52,8 @@
           return tex.count[v.index]
         elseif v.command == dimen_cmd then
           return tex.dimen[v.index]
+        elseif v.command == toks_cmd then
+          return tex.toks[v.index]
         end
       else
         return texmetaoldindex(t, k)
@@ -59,6 +66,8 @@
           tex.count[p.index] = v
         elseif p.command == dimen_cmd then
           tex.dimen[p.index] = v
+        elseif p.command == toks_cmd then
+          tex.toks[p.index] = v
         end
       else
         return texmetaoldnewindex(t, k, v)
@@ -87,10 +96,12 @@
 \texAlloc{dimen}{pagewidth}{210mm}
 \pdfAlloc{dimen}{horigin}{1in}
 \pdfAlloc{dimen}{vorigin}{1in}
+\pdfAlloc{dimen}{linkmargin}{0pt}
 \pdfAlloc{count}{majorversion}{1}
 \pdfAlloc{count}{minorversion}{7}
 \pdfAlloc{count}{compresslevel}{0} % 0 is actually the only supported value right now, so this is basically ignored
 \pdfAlloc{count}{objcompresslevel}{0} % see above
+\pdfAlloc{toks}{pageresources}{{}}
 
 \texAlloc{count}{bodydirection}{0}
 \texAlloc{count}{pagedirection}{0}

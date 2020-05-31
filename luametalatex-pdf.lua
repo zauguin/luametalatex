@@ -6,27 +6,68 @@ local error = error
 local pairs = pairs
 local setmetatable = setmetatable
 local assigned = {}
-local function stream(pdf, num, dict, content)
+local delayed = {}
+local function stream(pdf, num, dict, content, isfile)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
   end
   pdf[num] = {offset = pdf.file:seek()}
+  if isfile then
+    local f = io.open(content)
+    content = f:read'a'
+    f:close()
+  end
   pdf.file:write(format('%i 0 obj\n<<%s/Length %i>>stream\n', num, dict, #content))
   pdf.file:write(content)
   pdf.file:write'\nendstream\nendobj\n'
   return num
 end
-local function indirect(pdf, num, content)
+local function delayedstream(pdf, num, dict, content, isfile)
+  if not num then num = pdf:getobj() end
+  if pdf[num] ~= assigned then
+    error[[Invalid object]]
+  end
+  pdf[num] = delayed
+  pdf[-num] = {stream, dict, content, isfile}
+  return num
+end
+local function indirect(pdf, num, content, isfile)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
   end
   pdf[num] = {offset = pdf.file:seek()}
   pdf.file:write(format('%i 0 obj\n', num))
+  if isfile then
+    local f = io.open(content)
+    content = f:read'a'
+    f:close()
+  end
   pdf.file:write(content)
   pdf.file:write'\nendobj\n'
   return num
+end
+local function delayed(pdf, num, content, isfile)
+  if not num then num = pdf:getobj() end
+  if pdf[num] ~= assigned then
+    error[[Invalid object]]
+  end
+  pdf[num] = delayed
+  pdf[-num] = {indirect, content, isfile}
+  return num
+end
+local function reference(pdf, num)
+  local status = pdf[num]
+  if status == delayed then
+    local saved = pdf[-num]
+    pdf[-num] = nil
+    pdf[num] = assigned
+    return saved[1](pdf, num, table.unpack(saved, 2))
+  elseif status == assigned or not status then
+    error[[Invalid object]]
+  -- else -- Already written
+  end
 end
 local function getid(pdf)
   local id = pdf[0] + 1
@@ -73,9 +114,9 @@ local pdfmeta = {
   stream = stream,
   newpage = pagetree.newpage,
   writepages = pagetree.write,
-  -- delayed = delayed,
-  -- delayedstream = delayedstream,
-  -- reference
+  delayed = delayed,
+  delayedstream = delayedstream,
+  reference = reference,
 }
 pdfmeta.__index = pdfmeta
 local function open(filename)

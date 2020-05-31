@@ -11,10 +11,14 @@ local colorstacks = {{
     page_stack = {"0 g 0 G"},
   }}
 token.scan_list = token.scan_box -- They are equal if no parameter is present
-token.luacmd("shipout", function()
+local function get_pfile()
   if not pfile then
     pfile = newpdf.open(tex.jobname .. '.pdf')
   end
+  return pfile
+end
+token.luacmd("shipout", function()
+  local pfile = get_pfile()
   local voff = node.new'kern'
   voff.kern = tex.voffset + pdf.variable.vorigin
   voff.next = token.scan_list()
@@ -30,7 +34,14 @@ token.luacmd("shipout", function()
   token.scan_token()
 end, 'force', 'protected')
 local infodir = ""
+local catalogdir = ""
 local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
+-- TODO: write_catalogdir is never called yet
+local function write_catalogdir(p)
+  local additional = ""
+  error[[Not implemented]]
+  return p:indirect(nil, string.format("<<%s%s>>", catalogdir, additional))
+end
 local function write_infodir(p)
   local additional = ""
   if not string.find(infodir, "/CreationDate", 1, false) then
@@ -87,6 +98,9 @@ token.luacmd("pdfvariable", function()
 end)
 local whatsit_id = node.id'whatsit'
 local whatsits = node.whatsits()
+
+local lastobj = -1
+
 function pdf.newcolorstack(default, mode, page)
   local idx = #colorstacks
   colorstacks[idx + 1] = {
@@ -96,6 +110,9 @@ function pdf.newcolorstack(default, mode, page)
     page_stack = {default},
   }
   return idx
+end
+local function do_refobj(prop, p, n, x, y)
+  pfile:reference(prop.obj)
 end
 local function do_literal(prop, p, n, x, y)
   pdf.write(prop.mode, prop.data, x, y, p)
@@ -165,13 +182,15 @@ token.luacmd("pdffeedback", function()
     tex.sprint(tostring(pdf.newcolorstack(default, mode, page)))
   elseif token.scan_keyword"creationdate" then
     tex.sprint(creationdate)
+  elseif token.scan_keyword"lastobj" then
+    tex.sprint(tostring(lastobj))
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
     error(string.format("Unknown PDF feedback %s", token.scan_word()))
   end
 end)
-token.luacmd("pdfextension", function()
+token.luacmd("pdfextension", function(_, imm)
   if token.scan_keyword"colorstack" then
     write_colorstack()
   elseif token.scan_keyword"literal" then
@@ -186,6 +205,40 @@ token.luacmd("pdfextension", function()
     node.write(whatsit)
   elseif token.scan_keyword"info" then
     infodir = infodir .. token.scan_string()
+  elseif token.scan_keyword"catalog" then
+    catalogdir = catalogdir .. token.scan_string()
+  elseif token.scan_keyword"obj" then
+    local pfile = get_pfile()
+    if token.scan_keyword"reserveobjnum" then
+      lastobj = pfile:getobj()
+    else
+      local num = token.scan_keyword'useobjnum' and token.scan_int() or pfile:getobj()
+      lastobj = num
+      local attr = token.scan_keyword'stream' and (token.scan_keyword'attr' and token.scan_string() or '')
+      local isfile = token.scan_keyword'file'
+      local content = token.scan_string()
+      if immediate then
+        if attr then
+          pfile:stream(num, attr, content, isfile)
+        else
+          pfile:indirect(num, attr, content, isfile)
+        end
+      else
+        if attr then
+          pfile:delayedstream(num, attr, content, isfile)
+        else
+          pfile:delayed(num, attr, content, isfile)
+        end
+      end
+    end
+  elseif token.scan_keyword"refobj" then
+    local num = token.scan_int()
+    local whatsit = node.new(whatsit_id, whatsits.pdf_refobj)
+    node.setproperty(whatsit, {
+        obj = num,
+        handle = do_refobj,
+      })
+    node.write(whatsit)
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.

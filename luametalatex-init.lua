@@ -74,15 +74,36 @@ callback.register('open_data_file', function(name)
   })
 end)
 callback.register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
-callback.register('show_warning_message', function()
-  texio.write_nl('WARNING Tag: ' .. status.lastwarningtag)
-  texio.write_nl(status.lastwarningstring)
-end)
-callback.register('show_error_message', function()
-  if status.lasterrorcontext then
-    texio.write_nl('ERROR Context: ' .. status.lasterrorcontext)
-  end
-  texio.write_nl(status.lasterrorstring)
+callback.register('handle_error_hook', function()
+  repeat
+    texio.write_nl'? '
+    local line = io.read()
+    if not line then
+      error[[TODO: Handle EOL]]
+    end
+    if line == "" then return 3 end
+    local first = line:sub(1,1):upper()
+    if first == 'H' then
+      texio.write(tex.gethelptext())
+    elseif first == 'I' then
+      line = line:sub(2)
+      tex.runtoks(function()
+        tex.sprint(token.scan_token(), line)
+      end)
+      return 3
+    elseif first == 'Q' then texio.write'OK, entering \\batchmode...\n' return 0
+    elseif first == 'R' then texio.write'OK, entering \\nonstopmode...\n' return 1
+    elseif first == 'S' then texio.write'OK, entering \\scrollmode...\n' return 2
+    elseif first == 'X' then return -1
+    else
+      texio.write'Type <return> to proceed, S to scroll future error messages,\
+\z      R to run without stopping, Q to run quietly,\
+\z      I to insert something,\
+\z      H for help, X to quit.'
+    end
+  until false
+  -- print('handle')
+  return 3
 end)
 callback.register('pre_dump', function()
   lua.prepared_code[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())

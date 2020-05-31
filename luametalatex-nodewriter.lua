@@ -2,12 +2,13 @@ local format = string.format
 local concat = table.concat
 local write = texio.write_nl
 local direct = node.direct
-local properties = direct.get_properties_table()
+local properties = direct.properties
 local tonode = direct.tonode
 local todirect = direct.todirect
 local getid = direct.getid
 local traverse = direct.traverse
 local getsubtype = direct.getsubtype
+local getdirection = direct.getdirection
 local setsubtype = direct.setsubtype
 local getdepth = direct.getdepth
 local getheight = direct.getheight
@@ -27,6 +28,10 @@ local getnext = direct.getnext
 local getexpansion = direct.getexpansion
 local getchar = direct.getchar
 local rangedimensions = direct.rangedimensions
+local traverse_id = direct.traverse_id
+
+local dir_id = node.id'dir'
+
 local function doublekeyed(t, id2name, name2id, index)
   return setmetatable(t, {
       __index = index,
@@ -42,7 +47,8 @@ local function doublekeyed(t, id2name, name2id, index)
 end
 local nodehandler = (function()
   local function unknown_handler(_, n, x, y)
-    write(format("Sorry, but the PDF backend does not support %q (id = %i) nodes right now. The supplied node will be dropped at coordinates (%i, %i).", node.type(getid(n)), getid(n), x, y))
+    print(node.type(10))
+    write(format("Sorry, but the PDF backend does not support %q (id = %i) nodes right now. The supplied node will be dropped at coordinates (%i, %i).", node.type(getid(n)), getid(n), x//1, y//1))
   end
   return doublekeyed({}, node.type, node.id, function()
     return unknown_handler
@@ -55,7 +61,7 @@ local whatsithandler = (function()
     if prop and prop.handle then
       prop:handle(p, n, x, y, ...)
     else
-      write(format("Sorry, but the PDF backend does not support %q (id = %i) whatsits right now. The supplied node will be dropped at coordinates (%i, %i).", whatsits[getsubtype(n)], getsubtype(n), x, y))
+      write(format("Sorry, but the PDF backend does not support %q (id = %i) whatsits right now. The supplied node will be dropped at coordinates (%i, %i).", whatsits[getsubtype(n)], getsubtype(n), x//1, y//1))
     end
   end
   return doublekeyed({}, function(n)return whatsits[n]end, function(n)return whatsits[n]end, function()
@@ -185,9 +191,10 @@ local function write_link(p, link)
   for i=1,#quads do quads[i] = nil end
   link.objnum = nil
 end
-local function addlinkpoint(p, link, x, y, list, final)
+local function addlinkpoint(p, link, x, y, list, kind)
   local quads = link.quads
-  print'addlink'
+  local off = pdf.variable.linkmargin
+  x = kind == 'start' and x-off or x+off
   if link.annots and link.annots ~= p.annots then -- We started on another page, let's finish that before starting the new page
     write_link(p, link)
     link.annots = nil
@@ -198,12 +205,12 @@ local function addlinkpoint(p, link, x, y, list, final)
     p.annots[#p.annots+1] = link.objnum .. " 0 R"
   end
   local m = p.matrix
-  local lx, ly = projected_point(m, x, y-(link.depth or getdepth(list)))
-  local ux, uy = projected_point(m, x, y+(link.height or getheight(list)))
+  local lx, ly = projected_point(m, x, y-off-(link.depth or getdepth(list)))
+  local ux, uy = projected_point(m, x, y+off+(link.height or getheight(list)))
   local n = #quads
   quads[n+1], quads[n+2], quads[n+3], quads[n+4] = lx, ly, ux, uy
-  if final or (link.force_separate and (n+4)%8 == 0) then
-    print(final, n, link.force_separate)
+  if kind == 'final' or (link.force_separate and (n+4)%8 == 0) then
+    print(kind, n, link.force_separate)
     write_link(p, link)
     link.annots = nil
   end
@@ -216,18 +223,56 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
       x0 = x0 + getshift(list)
     end
   end
+  local direction = getdirection(list)
+  if direction == 1 then
+    x0 = x0 + getwidth(list)
+  end
+  local dirstack = {}
+  local dirnodes = {}
+  for n, sub in traverse_id(dir_id, getlist(list)) do
+    if sub == 0 then
+      dirstack[#dirstack + 1] = n
+    else
+      local m = dirstack[#dirstack]
+      dirnodes[m] = n
+      dirstack[#dirstack] = nil
+    end
+  end
+  for i=1,#dirstack do
+    dirnodes[dirstack[i]] = rangedimensions(list, dirstack[i])
+  end
   local x = x0
   for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
-      addlinkpoint(p, l, x, y, list)
+      addlinkpoint(p, l, x, y, list, 'start')
   end end
-  for n in traverse(getlist(list)) do
-    local next = getnext(n)
-    local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
-    nodehandler[getid(n)](p, n, x, y, list, x0, level+1)
-    x = w + x
+  for n, id, sub in traverse(getlist(list)) do
+    if id == dir_id then
+      if sub == 0 then
+        local newdir = getdirection(n)
+        if newdir ~= direction then
+          local close = dirnodes[n]
+          local dim = rangedimensions(list, n, close)
+          if close then dirnodes[close] = dim end
+          x = x + (2*newdir-1) * dim
+          direction = newdir
+        end
+      else
+        local dim = dirnodes[n]
+        if dim then
+          direction = 1-direction
+          x = x + (2*newdir-1) * dim
+        end
+      end
+    else
+      local next = getnext(n)
+      local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
+      if direction == 1 then x = x - w end
+      nodehandler[id](p, n, x, y, list, x0, level+1)
+      if direction == 0 then x = w + x end
+    end
   end
   for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
-      addlinkpoint(p, l, x, y, list)
+      addlinkpoint(p, l, x, y, list, 'end')
   end end
 end
 function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
@@ -484,14 +529,14 @@ function whatsithandler.pdf_start_link(p, n, x, y, outer, _, level)
   local links = p.linkcontext
   local link = {quads = {}, attr = n.link_attr, action = n.action, level = level, force_separate = false} -- force_separate should become an option
   links[#links+1] = link
-  addlinkpoint(p, link, x, y, outer)
+  addlinkpoint(p, link, x, y, outer, 'start')
 end
 function whatsithandler.pdf_end_link(p, n, x, y, outer, _, level)
   local links = p.linkcontext
   local link = links[#links]
   links[#links] = nil
   if link.level ~= level then error"Wrong link level" end
-  addlinkpoint(p, link, x, y, outer, true)
+  addlinkpoint(p, link, x, y, outer, 'final')
 end
 ]]
 local global_p, global_x, global_y
