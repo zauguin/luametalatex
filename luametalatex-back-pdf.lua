@@ -4,6 +4,8 @@ local newpdf = require'luametalatex-pdf'
 local pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
+local dests = {}
+local cur_page
 local colorstacks = {{
     page = true,
     mode = "direct",
@@ -11,12 +13,14 @@ local colorstacks = {{
     page_stack = {"0 g 0 G"},
   }}
 token.scan_list = token.scan_box -- They are equal if no parameter is present
+local spacer_cmd = token.command_id'spacer'
 local function get_pfile()
   if not pfile then
     pfile = newpdf.open(tex.jobname .. '.pdf')
   end
   return pfile
 end
+local properties = node.direct.properties
 token.luacmd("shipout", function()
   local pfile = get_pfile()
   local voff = node.new'kern'
@@ -26,8 +30,10 @@ token.luacmd("shipout", function()
   local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
   list.height = tex.pageheight
   list.width = tex.pagewidth
-  local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   local page, parent = pfile:newpage()
+  cur_page = page
+  local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
+  cur_page = nil
   local content = pfile:stream(nil, '', out)
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
@@ -36,12 +42,6 @@ end, 'force', 'protected')
 local infodir = ""
 local catalogdir = ""
 local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
--- TODO: write_catalogdir is never called yet
-local function write_catalogdir(p)
-  local additional = ""
-  error[[Not implemented]]
-  return p:indirect(nil, string.format("<<%s%s>>", catalogdir, additional))
-end
 local function write_infodir(p)
   local additional = ""
   if not string.find(infodir, "/CreationDate", 1, false) then
@@ -77,7 +77,7 @@ callback.register("stop_run", function()
   end
   pfile.root = pfile:getobj()
   pfile.version = string.format("%i.%i", pdf.variable.majorversion, pdf.variable.minorversion)
-  pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R>>]], pfile.version, pfile:writepages()))
+  pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R%s>>]], pfile.version, pfile:writepages(), catalogdir))
   pfile.info = write_infodir(pfile)
   pfile:close()
 end, "Finish PDF file")
@@ -110,6 +110,39 @@ function pdf.newcolorstack(default, mode, page)
     page_stack = {default},
   }
   return idx
+end
+local function sp2bp(sp)
+  return sp/65781.76
+end
+local function do_dest(prop, p, n, x, y)
+  -- TODO: Apply matrix
+  assert(cur_page, "Destinations can not appear outside of a page")
+  local id = prop.dest_id
+  local dest_type = prop.dest_type
+  local data
+  if dest_type == "xyz" then
+    local zoom = prop.xyz_zoom
+    if zoom then
+      data = string.format("[%i 0 R/XYZ %.5f %.5f %.3f]", cur_page, sp2bp(x), sp2bp(y), prop.zoom/1000)
+    else
+      data = string.format("[%i 0 R/XYZ %.5f %.5f null]", cur_page, sp2bp(x), sp2bp(y))
+    end
+  elseif dest_type == "fitr" then
+    data = string.format("[%i 0 R/FitR %.5f %.5f %.5f %.5f]", cur_page, sp2bp(x), sp2bp(y + prop.depth), sp2bp(x + prop.width), sp2bp(y - prop.height))
+  elseif dest_type == "fit" then
+    data = string.format("[%i 0 R/Fit]", cur_page)
+  elseif dest_type == "fith" then
+    data = string.format("[%i 0 R/FitH %.5f]", cur_page, sp2bp(y))
+  elseif dest_type == "fitv" then
+    data = string.format("[%i 0 R/FitV %.5f]", cur_page, sp2bp(x))
+  elseif dest_type == "fitb" then
+    data = string.format("[%i 0 R/FitB]", cur_page)
+  elseif dest_type == "fitbh" then
+    data = string.format("[%i 0 R/FitBH %.5f]", cur_page, sp2bp(y))
+  elseif dest_type == "fitbv" then
+    data = string.format("[%i 0 R/FitBV %.5f]", cur_page, sp2bp(x))
+  end
+  dests[id] = pfile:indirect(dests[id], data)
 end
 local function do_refobj(prop, p, n, x, y)
   pfile:reference(prop.obj)
@@ -173,6 +206,12 @@ local function scan_literal_mode()
       or token.scan_keyword"raw" and "raw"
       or "origin"
 end
+local function maybe_gobble_cmd(cmd)
+  local t = token.scan_token()
+  if t.command ~= cmd then
+    token.put_next(cmd)
+  end
+end
 token.luacmd("pdffeedback", function()
   if token.scan_keyword"colorstackinit" then
     local page = token.scan_keyword'page'
@@ -206,7 +245,7 @@ token.luacmd("pdfextension", function(_, imm)
   elseif token.scan_keyword"info" then
     infodir = infodir .. token.scan_string()
   elseif token.scan_keyword"catalog" then
-    catalogdir = catalogdir .. token.scan_string()
+    catalogdir = catalogdir .. ' ' .. token.scan_string()
   elseif token.scan_keyword"obj" then
     local pfile = get_pfile()
     if token.scan_keyword"reserveobjnum" then
@@ -221,7 +260,7 @@ token.luacmd("pdfextension", function(_, imm)
         if attr then
           pfile:stream(num, attr, content, isfile)
         else
-          pfile:indirect(num, attr, content, isfile)
+          pfile:indirect(num, content, isfile)
         end
       else
         if attr then
@@ -238,6 +277,64 @@ token.luacmd("pdfextension", function(_, imm)
         obj = num,
         handle = do_refobj,
       })
+    node.write(whatsit)
+  elseif token.scan_keyword"dest" then
+    local id
+    if token.scan_keyword'num' then
+      id = token.scan_int()
+      if not id > 0 then
+        error[[id must be positive]]
+      end
+    elseif token.scan_keyword'name' then
+      id = token.scan_string()
+    else
+      error[[Unsupported id type]]
+    end
+    local whatsit = node.new(whatsit_id, whatsits.pdf_dest)
+    local prop = {
+      dest_id = id,
+      handle = do_dest,
+    }
+    node.setproperty(whatsit, prop)
+    if token.scan_keyword'xyz' then
+      prop.dest_type = 'xyz'
+      prop.xyz_zoom = token.scan_keyword'zoom' and token.scan_int()
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fitr' then
+      prop.dest_type = 'fitr'
+      maybe_gobble_cmd(spacer_cmd)
+      while true do
+        if token.scan_keyword'width' then
+          prop.width = token.scan_dimen()
+        elseif token.scan_keyword'height' then
+          prop.height = token.scan_dimen()
+        elseif token.scan_keyword'depth' then
+          prop.depth = token.scan_dimen()
+        else
+          break
+        end
+      end
+    elseif token.scan_keyword'fitbh' then
+      prop.dest_type = 'fitbh'
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fitbv' then
+      prop.dest_type = 'fitbv'
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fitb' then
+      prop.dest_type = 'fitb'
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fith' then
+      prop.dest_type = 'fith'
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fitv' then
+      prop.dest_type = 'fitv'
+      maybe_gobble_cmd(spacer_cmd)
+    elseif token.scan_keyword'fit' then
+      prop.dest_type = 'fit'
+      maybe_gobble_cmd(spacer_cmd)
+    else
+      error[[Unsupported dest type]]
+    end
     node.write(whatsit)
   else
   -- The following error message gobbles the next word as a side effect.

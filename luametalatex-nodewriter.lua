@@ -259,8 +259,8 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
       else
         local dim = dirnodes[n]
         if dim then
+          x = x + (2*direction-1) * dim
           direction = 1-direction
-          x = x + (2*newdir-1) * dim
         end
       end
     else

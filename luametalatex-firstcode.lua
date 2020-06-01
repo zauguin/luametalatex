@@ -52,6 +52,9 @@ function token.luacmd(name, func, ...)
 end
 local properties = node.direct.get_properties_table()
 node.direct.properties = properties
+function node.direct.get_properties_table()
+  return properties
+end
 -- setmetatable(node.direct.get_properties_table(), {
 --     __index = function(t, id)
 --       local new = {}
