@@ -7,6 +7,13 @@ local pairs = pairs
 local setmetatable = setmetatable
 local assigned = {}
 local delayed = {}
+-- slightly tricky interface: No/nil return means that the objects content
+-- isn't known yet, while false indicates a delayed object.
+local function written(pdf, num)
+  num = pdf[num]
+  if not num or num == assigned then return end
+  return num ~= delayed
+end
 local function stream(pdf, num, dict, content, isfile)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
@@ -117,6 +124,7 @@ local pdfmeta = {
   delayed = delayed,
   delayedstream = delayedstream,
   reference = reference,
+  written = written,
 }
 pdfmeta.__index = pdfmeta
 local function open(filename)

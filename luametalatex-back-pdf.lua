@@ -142,7 +142,11 @@ local function do_dest(prop, p, n, x, y)
   elseif dest_type == "fitbv" then
     data = string.format("[%i 0 R/FitBV %.5f]", cur_page, sp2bp(x))
   end
-  dests[id] = pfile:indirect(dests[id], data)
+  if pfile:written(dests[id]) then
+    texio.write_nl(string.format("Duplicate destination %q", id))
+  else
+    dests[id] = pfile:indirect(dests[id], data)
+  end
 end
 local function do_refobj(prop, p, n, x, y)
   pfile:reference(prop.obj)
