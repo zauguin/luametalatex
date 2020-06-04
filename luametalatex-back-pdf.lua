@@ -119,17 +119,19 @@ local function projected(m, x, y, w)
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
 local do_setmatrix do
-  local numberpattern = (lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
+  local numberpattern = (lpeg.P'-'^-1 * lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
   local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
-  function whatsithandler.pdf_setmatrix(p, n, x, y, outer)
-    write_matrix(p, a, b, c, d, e, f)
-  end
-  local function do_setmatrix(prop, p, n, x, y, outer)
+  function do_setmatrix(prop, p, n, x, y, outer)
     local m = p.matrix
     local a, b, c, d = matrixpattern:match(prop.data)
+    if not a then
+      print(prop.data)
+      error[[No valid matrix found]]
+    end
     local e, f = (1-a)*x-c*y, (1-d)*y-b*x -- Emulate that the origin is at x, y for this transformation
                                           -- (We could also first translate by (-x, -y), then apply the matrix
                                           --  and translate back, but this is more direct)
+    pdf.write_matrix(a, b, c, d, e, f, p)
     a, b = projected(m, a, b, 0)
     c, d = projected(m, c, d, 0)
     e, f = projected(m, e, f, 1)
@@ -278,10 +280,10 @@ token.luacmd("pdfextension", function(_, imm)
         data = literal,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"push" then
-    local whatsit = node.new(whatsit_id, whatsits.pdf_push)
+  elseif token.scan_keyword"save" then
+    local whatsit = node.new(whatsit_id, whatsits.pdf_save)
     node.setproperty(whatsit, {
-        handle = do_push,
+        handle = do_save,
       })
     node.write(whatsit)
   elseif token.scan_keyword"setmatrix" then
@@ -292,10 +294,10 @@ token.luacmd("pdfextension", function(_, imm)
         data = matrix,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"pop" then
-    local whatsit = node.new(whatsit_id, whatsits.pdf_pop)
+  elseif token.scan_keyword"restore" then
+    local whatsit = node.new(whatsit_id, whatsits.pdf_restore)
     node.setproperty(whatsit, {
-        handle = do_pop,
+        handle = do_restore,
       })
     node.write(whatsit)
   elseif token.scan_keyword"info" then
