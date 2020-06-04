@@ -74,21 +74,6 @@ local function projected_point(m, x, y, w)
   w = w or 1
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
-local function pdfsave(p, x, y)
-  local lastmatrix = p.matrix
-  p.matrix = {[0] = lastmatrix, table.unpack(lastmatrix)}
-end
-local function pdfmatrix(p, a, b, c, d, e, f)
-  local m = p.matrix
-  a, b = projected_point(m, a, b, 0)
-  c, d = projected_point(m, c, d, 0)
-  e, f = projected_point(m, e, f, 1)
-  m[1], m[2], m[3], m[4], m[5], m[6] = a, b, c, d, e, f
-end
-local function pdfrestore(p, x, y)
-  -- TODO: Check x, y
-  p.matrix = p.matrix[0]
-end
 local function sp2bp(sp)
   return sp/65781.76
 end
@@ -150,21 +135,6 @@ local function toglyph(p, fid, x, y, exfactor)
   p.pos.lx, p.pos.ly, p.pos.x, p.pos.y = x, y, x, y
   p.mode = glyph
   p.pending[1] = "[("
-end
-local function write_matrix(p, a, b, c, d, e, f)
-  local pending = p.pending_matrix
-  if p.mode ~= cm_pending then
-    topage(p)
-    p.mode = cm_pending
-    pending[1], pending[2], pending[3], pending[4], pending[5], pending[6] = a, b, c, d, e, f
-    return
-  else
-    a, b = projected_point(pending, a, b, 0)
-    c, d = projected_point(pending, c, d, 0)
-    e, f = projected_point(pending, e, f, 1)
-    pending[1], pending[2], pending[3], pending[4], pending[5], pending[6] = a, b, c, d, e, f
-    return
-  end
 end
 local linkcontext = {}
 -- local function get_action_attr(p, action)
@@ -508,23 +478,6 @@ function nodehandler.whatsit(p, n, ...) -- Whatsit?
   return whatsithandler[getsubtype(n)](p, n, ...)
 end
 --[[ -- These use the old whatsit handling system which might get removed.
-function whatsithandler.pdf_save(p, n, x, y, outer)
-  topage(p)
-  p.strings[#p.strings + 1] = 'q'
-  pdfsave(p, x, y)
-end
-function whatsithandler.pdf_restore(p, n, x, y, outer)
-  topage(p)
-  p.strings[#p.strings + 1] = 'Q'
-  pdfrestore(p, x, y)
-end
-local numberpattern = (lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
-local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
-function whatsithandler.pdf_setmatrix(p, n, x, y, outer)
-  local a, b, c, d = matrixpattern:match(n.data)
-  local e, f = (1-a)*x-c*y, (1-d)*y-b*x
-  write_matrix(p, a, b, c, d, e, f)
-end
 function whatsithandler.pdf_start_link(p, n, x, y, outer, _, level)
   local links = p.linkcontext
   local link = {quads = {}, attr = n.link_attr, action = n.action, level = level, force_separate = false} -- force_separate should become an option
@@ -544,6 +497,20 @@ function pdf._latelua(p, x, y, func, ...)
   global_p, global_x, global_y = p, x, y
   return func(...)
 end
+function pdf.write_matrix(a, b, c, d, e, f, p)
+  e, f, p = e or 0, f or 0, p or global_p
+  local pending = p.pending_matrix
+  if p.mode ~= cm_pending then
+    topage(p)
+    p.mode = cm_pending
+  else
+    a, b = projected_point(pending, a, b, 0)
+    c, d = projected_point(pending, c, d, 0)
+    e, f = projected_point(pending, e, f, 1)
+  end
+  pending[1], pending[2], pending[3], pending[4], pending[5], pending[6] = a, b, c, d, e, f
+end
+local write_matrix = pdf.write_matrix
 function pdf.write(mode, text, x, y, p)
   x, y, p = x or global_x, y or global_y, p or global_p
   if mode == "page" then
@@ -558,10 +525,10 @@ function pdf.write(mode, text, x, y, p)
     end
     p.strings[#p.strings + 1] = text
   elseif mode == "origin" then
-    write_matrix(p, 1, 0, 0, 1, x, y)
+    write_matrix(1, 0, 0, 1, x, y, p)
     topage(p)
     p.strings[#p.strings + 1] = text
-    write_matrix(p, 1, 0, 0, 1, -x, -y)
+    write_matrix(1, 0, 0, 1, -x, -y, p)
   else
     write(format('Literal type %s unsupported', mode))
   end

@@ -114,6 +114,38 @@ end
 local function sp2bp(sp)
   return sp/65781.76
 end
+local function projected(m, x, y, w)
+  w = w or 1
+  return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
+end
+local do_setmatrix do
+  local numberpattern = (lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
+  local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
+  function whatsithandler.pdf_setmatrix(p, n, x, y, outer)
+    write_matrix(p, a, b, c, d, e, f)
+  end
+  local function do_setmatrix(prop, p, n, x, y, outer)
+    local m = p.matrix
+    local a, b, c, d = matrixpattern:match(prop.data)
+    local e, f = (1-a)*x-c*y, (1-d)*y-b*x -- Emulate that the origin is at x, y for this transformation
+                                          -- (We could also first translate by (-x, -y), then apply the matrix
+                                          --  and translate back, but this is more direct)
+    a, b = projected(m, a, b, 0)
+    c, d = projected(m, c, d, 0)
+    e, f = projected(m, e, f, 1)
+    m[1], m[2], m[3], m[4], m[5], m[6] = a, b, c, d, e, f
+  end
+end
+local function do_save(prop, p, n, x, y, outer)
+  pdf.write('page', 'q', x, y, p)
+  local lastmatrix = p.matrix
+  p.matrix = {[0] = lastmatrix, table.unpack(lastmatrix)}
+end
+local function do_restore(prop, p, n, x, y, outer)
+  -- TODO: Check x, y
+  pdf.write('page', 'Q', x, y, p)
+  p.matrix = p.matrix[0]
+end
 local function do_dest(prop, p, n, x, y)
   -- TODO: Apply matrix
   assert(cur_page, "Destinations can not appear outside of a page")
@@ -244,6 +276,26 @@ token.luacmd("pdfextension", function(_, imm)
         handle = do_literal,
         mode = mode,
         data = literal,
+      })
+    node.write(whatsit)
+  elseif token.scan_keyword"push" then
+    local whatsit = node.new(whatsit_id, whatsits.pdf_push)
+    node.setproperty(whatsit, {
+        handle = do_push,
+      })
+    node.write(whatsit)
+  elseif token.scan_keyword"setmatrix" then
+    local matrix = token.scan_string()
+    local whatsit = node.new(whatsit_id, whatsits.pdf_setmatrix)
+    node.setproperty(whatsit, {
+        handle = do_setmatrix,
+        data = matrix,
+      })
+    node.write(whatsit)
+  elseif token.scan_keyword"pop" then
+    local whatsit = node.new(whatsit_id, whatsits.pdf_pop)
+    node.setproperty(whatsit, {
+        handle = do_pop,
       })
     node.write(whatsit)
   elseif token.scan_keyword"info" then
