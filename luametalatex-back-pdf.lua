@@ -200,7 +200,6 @@ local function addlinkpoint(p, link, x, y, list, kind)
   local n = #quads
   quads[n+1], quads[n+2], quads[n+3], quads[n+4] = lx, ly, ux, uy
   if kind == 'final' or (link.force_separate and (n+4)%8 == 0) then
-    print(kind, n, link.force_separate)
     write_link(p, link)
     link.annots = nil
   end

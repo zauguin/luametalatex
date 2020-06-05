@@ -428,23 +428,13 @@ function nodehandler.glyph(p, n, x, y, ...)
   p.pos.x = p.pos.x + math.floor(getwidth(n)*(1+getexpansion(n)/1000000)+.5)
 end
 function nodehandler.whatsit(p, n, ...) -- Whatsit?
-  return whatsithandler[getsubtype(n)](p, n, ...)
+  local prop = properties[n]-- or node.getproperty(n)
+  if prop and prop.handle then
+    prop:handle(p, n, ...)
+  else
+    write("Invalid whatsit found (missing handler).")
+  end
 end
---[[ -- These use the old whatsit handling system which might get removed.
-function whatsithandler.pdf_start_link(p, n, x, y, outer, _, level)
-  local links = p.linkcontext
-  local link = {quads = {}, attr = n.link_attr, action = n.action, level = level, force_separate = false} -- force_separate should become an option
-  links[#links+1] = link
-  addlinkpoint(p, link, x, y, outer, 'start')
-end
-function whatsithandler.pdf_end_link(p, n, x, y, outer, _, level)
-  local links = p.linkcontext
-  local link = links[#links]
-  links[#links] = nil
-  if link.level ~= level then error"Wrong link level" end
-  addlinkpoint(p, link, x, y, outer, 'final')
-end
-]]
 local global_p, global_x, global_y
 function pdf._latelua(p, x, y, func, ...)
   global_p, global_x, global_y = p, x, y
