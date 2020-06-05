@@ -100,6 +100,7 @@ local whatsit_id = node.id'whatsit'
 local whatsits = node.whatsits()
 
 local lastobj = -1
+local lastannot = -1
 
 function pdf.newcolorstack(default, mode, page)
   local idx = #colorstacks
@@ -118,6 +119,80 @@ local function projected(m, x, y, w)
   w = w or 1
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
+
+-- local function get_action_attr(p, action)
+  -- if action.action_type == 3 then
+    -- return action.data
+  -- elseif action.action_type == 2 then
+local function write_link(p, link)
+  local quads = link.quads
+  local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
+  assert(link.action.action_type == 3) -- TODO: Other types
+  local attr = link.attr .. link.action.data
+  assert(#quads%8==0)
+  local quadStr = {}
+  for i=1,#quads,8 do
+    local x1, y1, x4, y4, x2, y2, x3, y3 = table.unpack(quads, i, i+7)
+    x1, y1, x2, y2, x3, y3, x4, y4 = sp2bp(x1), sp2bp(y1), sp2bp(x2), sp2bp(y2), sp2bp(x3), sp2bp(y3), sp2bp(x4), sp2bp(y4)
+    quadStr[i//8+1] = string.format("%f %f %f %f %f %f %f %f", x1, y1, x2, y2, x3, y3, x4, y4)
+    minX = math.min(minX, x1, x2, x3, x4)
+    minY = math.min(minY, y1, y2, y3, y4)
+    maxX = math.max(maxX, x1, x2, x3, x4)
+    maxY = math.max(maxY, y1, y2, y3, y4)
+  end
+  pfile:indirect(link.objnum, string.format("<</Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
+  for i=1,#quads do quads[i] = nil end
+  link.objnum = nil
+end
+local function linkcontext_set(linkcontext, p, x, y, list, level, kind)
+  for _,l in ipairs(linkcontext) do if l.level == level then
+      addlinkpoint(p, l, x, y, list, level, kind)
+  end end
+end
+local function addlinkpoint(p, link, x, y, list, kind)
+  local quads = link.quads
+  local off = pdf.variable.linkmargin
+  x = kind == 'start' and x-off or x+off
+  if link.annots and link.annots ~= p.annots then -- We started on another page, let's finish that before starting the new page
+    write_link(p, link)
+    link.annots = nil
+  end
+  if not link.annots then
+    link.annots = p.annots -- Just a marker to indicate the page
+    link.objnum = link.objnum or p.file:getobj()
+    p.annots[#p.annots+1] = link.objnum .. " 0 R"
+  end
+  local m = p.matrix
+  local lx, ly = projected(m, x, y-off-(link.depth or node.direct.getdepth(list)))
+  local ux, uy = projected(m, x, y+off+(link.height or node.direct.getheight(list)))
+  local n = #quads
+  quads[n+1], quads[n+2], quads[n+3], quads[n+4] = lx, ly, ux, uy
+  if kind == 'final' or (link.force_separate and (n+4)%8 == 0) then
+    print(kind, n, link.force_separate)
+    write_link(p, link)
+    link.annots = nil
+  end
+end
+
+function do_start_link(prop, p, n, x, y, outer, _, level)
+  local links = p.linkcontext
+  if not links then
+    links = {set = linkcontext_set}
+    p.linkcontext = links
+  end
+  local link = {quads = {}, attr = prop.link_attr, action = prop.action, level = level, force_separate = false} -- force_separate should become an option
+  links[#links+1] = link
+  addlinkpoint(p, link, x, y, outer, 'start')
+end
+function do_end_link(prop, p, n, x, y, outer, _, level)
+  local links = p.linkcontext
+  if not links then error"No link here to end" end
+  local link = links[#links]
+  links[#links] = nil
+  if link.level ~= level then error"Wrong link level" end
+  addlinkpoint(p, link, x, y, outer, 'final')
+end
+
 local do_setmatrix do
   local numberpattern = (lpeg.P'-'^-1 * lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
   local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
@@ -236,6 +311,42 @@ local function write_colorstack()
     })
   node.write(whatsit)
 end
+local function scan_action()
+  local action_type
+  
+  if token.scan_keyword'user' then
+    return {action_type = 3, data = token.scan_string()}
+  elseif token.scan_keyword'thread' then
+    error[[FIXME: Unsupported]] -- TODO
+  elseif token.scan_keyword'goto' then
+    action_type = 1
+  else
+    error[[Unsupported action]]
+  end
+  local action = {
+    action_type = action_type,
+    file = token.scan_keyword'file' and token.scan_string(),
+  }
+  if token.scan_keyword'page' then
+    error[[TODO]]
+  elseif token.scan_keyword'num' then
+    if action.file and action_type == 3 then
+      error[[num style GoTo actions must be internal]]
+    end
+    action.id = token.scan_int()
+    if not id > 0 then
+      error[[id must be positive]]
+    end
+  elseif token.scan_keyword'name' then
+    action.id = token.scan_string()
+  else
+    error[[Unsupported id type]]
+  end
+  action.new_window = token.scan_keyword'newwindow' and 1
+                   or token.scan_keyword'nonewwindow' and 2
+                   or 0
+  return action
+end
 local function scan_literal_mode()
   return token.scan_keyword"direct" and "direct"
       or token.scan_keyword"page" and "page"
@@ -259,6 +370,8 @@ token.luacmd("pdffeedback", function()
     tex.sprint(tostring(pdf.newcolorstack(default, mode, page)))
   elseif token.scan_keyword"creationdate" then
     tex.sprint(creationdate)
+  elseif token.scan_keyword"lastannot" then
+    tex.sprint(tostring(lastannot))
   elseif token.scan_keyword"lastobj" then
     tex.sprint(tostring(lastobj))
   else
@@ -278,6 +391,26 @@ token.luacmd("pdfextension", function(_, imm)
         handle = do_literal,
         mode = mode,
         data = literal,
+      })
+    node.write(whatsit)
+  elseif token.scan_keyword"startlink" then
+    local pfile = get_pfile()
+    local whatsit = node.new(whatsit_id, whatsits.pdf_start_link)
+    local attr = token.scan_keyword'attr' and token.scan_string() or ''
+    local action = scan_action()
+    local objnum = pfile:getobj()
+    lastannot = num
+    node.setproperty(whatsit, {
+        handle = do_start_link,
+        link_attr = attr,
+        action = action,
+        objnum = objnum,
+      })
+    node.write(whatsit)
+  elseif token.scan_keyword"endlink" then
+    local whatsit = node.new(whatsit_id, whatsits.pdf_end_link)
+    node.setproperty(whatsit, {
+        handle = do_end_link,
       })
     node.write(whatsit)
   elseif token.scan_keyword"save" then

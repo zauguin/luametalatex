@@ -136,55 +136,6 @@ local function toglyph(p, fid, x, y, exfactor)
   p.mode = glyph
   p.pending[1] = "[("
 end
-local linkcontext = {}
--- local function get_action_attr(p, action)
-  -- if action.action_type == 3 then
-    -- return action.data
-  -- elseif action.action_type == 2 then
-local function write_link(p, link)
-  local quads = link.quads
-  local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
-  assert(link.action.action_type == 3) -- TODO: Other types
-  local attr = link.attr .. link.action.data
-  assert(#quads%8==0)
-  local quadStr = {}
-  for i=1,#quads,8 do
-    local x1, y1, x4, y4, x2, y2, x3, y3 = table.unpack(quads, i, i+7)
-    x1, y1, x2, y2, x3, y3, x4, y4 = sp2bp(x1), sp2bp(y1), sp2bp(x2), sp2bp(y2), sp2bp(x3), sp2bp(y3), sp2bp(x4), sp2bp(y4)
-    quadStr[i//8+1] = string.format("%f %f %f %f %f %f %f %f", x1, y1, x2, y2, x3, y3, x4, y4)
-    minX = math.min(minX, x1, x2, x3, x4)
-    minY = math.min(minY, y1, y2, y3, y4)
-    maxX = math.max(maxX, x1, x2, x3, x4)
-    maxY = math.max(maxY, y1, y2, y3, y4)
-  end
-  p.file:indirect(link.objnum, string.format("<</Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
-  for i=1,#quads do quads[i] = nil end
-  link.objnum = nil
-end
-local function addlinkpoint(p, link, x, y, list, kind)
-  local quads = link.quads
-  local off = pdf.variable.linkmargin
-  x = kind == 'start' and x-off or x+off
-  if link.annots and link.annots ~= p.annots then -- We started on another page, let's finish that before starting the new page
-    write_link(p, link)
-    link.annots = nil
-  end
-  if not link.annots then
-    link.annots = p.annots -- Just a marker to indicate the page
-    link.objnum = link.objnum or p.file:getobj()
-    p.annots[#p.annots+1] = link.objnum .. " 0 R"
-  end
-  local m = p.matrix
-  local lx, ly = projected_point(m, x, y-off-(link.depth or getdepth(list)))
-  local ux, uy = projected_point(m, x, y+off+(link.height or getheight(list)))
-  local n = #quads
-  quads[n+1], quads[n+2], quads[n+3], quads[n+4] = lx, ly, ux, uy
-  if kind == 'final' or (link.force_separate and (n+4)%8 == 0) then
-    print(kind, n, link.force_separate)
-    write_link(p, link)
-    link.annots = nil
-  end
-end
 function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
   if outerlist then
     if getid(outerlist) == 0 then
@@ -212,9 +163,10 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
     dirnodes[dirstack[i]] = rangedimensions(list, dirstack[i])
   end
   local x = x0
-  for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
-      addlinkpoint(p, l, x, y, list, 'start')
-  end end
+  local linkcontext = p.linkcontext
+  if linkcontext then
+    linkcontext:set(p, x, y, list, level+1, 'start')
+  end
   for n, id, sub in traverse(getlist(list)) do
     if id == dir_id then
       if sub == 0 then
@@ -241,9 +193,10 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
       if direction == 0 then x = w + x end
     end
   end
-  for _,l in ipairs(p.linkcontext) do if l.level == level+1 then
-      addlinkpoint(p, l, x, y, list, 'end')
-  end end
+  linkcontext = p.linkcontext
+  if linkcontext then
+    linkcontext:set(p, x, y, list, level+1, 'end')
+  end
 end
 function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
   if outerlist then
@@ -557,11 +510,6 @@ local fontnames = setmetatable({}, {__index = function(t, k) local res = format(
 return function(file, n, fontdirs, usedglyphs, colorstacks)
   n = todirect(n)
   setmetatable(usedglyphs, ondemandmeta)
-  local linkcontext = file.linkcontext
-  if not linkcontext then
-    linkcontext = {}
-    file.linkcontext = linkcontext
-  end
   local p = {
     is_page = not not colorstacks,
     file = file,
