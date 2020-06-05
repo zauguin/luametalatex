@@ -61,6 +61,12 @@ local function write_infodir(p)
   end
   return p:indirect(nil, string.format("<<%s%s>>", infodir, additional))
 end
+
+local function pdf_string(s)
+  -- Emulate other engines here: If  looks like an escaped string, treat it as such. Otherwise, add parenthesis.
+  return s:match("^%(.*%)$") or s:match("^<.*>$") or '(' .. s .. ')'
+end
+
 callback.register("stop_run", function()
   if not pfile then
     return
@@ -120,15 +126,46 @@ local function projected(m, x, y, w)
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
 
--- local function get_action_attr(p, action)
-  -- if action.action_type == 3 then
-    -- return action.data
-  -- elseif action.action_type == 2 then
+local function get_action_attr(p, action)
+  local action_type = action.action_type
+  if action_type == 3 then return action.data end
+  local action_attr = "/Subtype/Link/A<<"
+  local file = action.file
+  if file then
+    action_attr = action_attr .. '/F' .. pdf_string(file)
+    local newwindow = action.new_window
+    if newwindow and newwindow > 0 then
+      action_attr = action_attr .. '/NewWindow ' .. (newwindow == 1 and 'true' or 'false')
+    end
+  end
+  if action_type == 2 then
+    error[[FIXME: Threads are currently unsupported]] -- TODO
+  elseif action_type == 0 then
+    error[[FIXME]]
+  elseif action_type == 1 then -- GoTo
+    local id = action.id
+    if file then
+      assert(type(id) == "string")
+      action_attr = action_attr .. "/S/GoToR/D" .. pdf_string(id)
+    else
+      local dest = dests[id]
+      if not dest then
+        dest = pfile:getobj()
+        dests[id] = dest
+      end
+      if type(id) == "string" then
+        action_attr = action_attr .. "/S/GoTo/D" .. pdf_string(id)
+      else
+        action_attr = string.format("%s/S/GoTo/D %i 0 R", action_attr, dest)
+      end
+    end
+  end
+  return action_attr
+end
 local function write_link(p, link)
   local quads = link.quads
   local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
-  assert(link.action.action_type == 3) -- TODO: Other types
-  local attr = link.attr .. link.action.data
+  local attr = link.attr .. get_action_attr(link.action)
   assert(#quads%8==0)
   local quadStr = {}
   for i=1,#quads,8 do
@@ -140,7 +177,7 @@ local function write_link(p, link)
     maxX = math.max(maxX, x1, x2, x3, x4)
     maxY = math.max(maxY, y1, y2, y3, y4)
   end
-  pfile:indirect(link.objnum, string.format("<</Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
+  pfile:indirect(link.objnum, string.format("<</Type/Annot/Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
   for i=1,#quads do quads[i] = nil end
   link.objnum = nil
 end
@@ -344,7 +381,9 @@ local function scan_action()
   end
   action.new_window = token.scan_keyword'newwindow' and 1
                    or token.scan_keyword'nonewwindow' and 2
-                   or 0
+  if action.new_window and not action.file then
+    error[[newwindow is only supported for external files]]
+  end
   return action
 end
 local function scan_literal_mode()
