@@ -146,7 +146,7 @@ local function get_action_attr(p, action)
     local id = action.id
     if file then
       assert(type(id) == "string")
-      action_attr = action_attr .. "/S/GoToR/D" .. pdf_string(id)
+      action_attr = action_attr .. "/S/GoToR/D" .. pdf_string(id) .. ">>"
     else
       local dest = dests[id]
       if not dest then
@@ -154,9 +154,9 @@ local function get_action_attr(p, action)
         dests[id] = dest
       end
       if type(id) == "string" then
-        action_attr = action_attr .. "/S/GoTo/D" .. pdf_string(id)
+        action_attr = action_attr .. "/S/GoTo/D" .. pdf_string(id) .. ">>"
       else
-        action_attr = string.format("%s/S/GoTo/D %i 0 R", action_attr, dest)
+        action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
       end
     end
   end
@@ -165,7 +165,7 @@ end
 local function write_link(p, link)
   local quads = link.quads
   local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
-  local attr = link.attr .. get_action_attr(link.action)
+  local attr = link.attr .. get_action_attr(p, link.action)
   assert(#quads%8==0)
   local quadStr = {}
   for i=1,#quads,8 do
@@ -180,11 +180,6 @@ local function write_link(p, link)
   pfile:indirect(link.objnum, string.format("<</Type/Annot/Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
   for i=1,#quads do quads[i] = nil end
   link.objnum = nil
-end
-local function linkcontext_set(linkcontext, p, x, y, list, level, kind)
-  for _,l in ipairs(linkcontext) do if l.level == level then
-      addlinkpoint(p, l, x, y, list, level, kind)
-  end end
 end
 local function addlinkpoint(p, link, x, y, list, kind)
   local quads = link.quads
@@ -209,6 +204,11 @@ local function addlinkpoint(p, link, x, y, list, kind)
     write_link(p, link)
     link.annots = nil
   end
+end
+local function linkcontext_set(linkcontext, p, x, y, list, level, kind)
+  for _,l in ipairs(linkcontext) do if l.level == level then
+      addlinkpoint(p, l, x, y, list, level, kind)
+  end end
 end
 
 function do_start_link(prop, p, n, x, y, outer, _, level)
@@ -371,7 +371,7 @@ local function scan_action()
       error[[num style GoTo actions must be internal]]
     end
     action.id = token.scan_int()
-    if not id > 0 then
+    if action.id <= 0 then
       error[[id must be positive]]
     end
   elseif token.scan_keyword'name' then
@@ -512,7 +512,7 @@ token.luacmd("pdfextension", function(_, imm)
     local id
     if token.scan_keyword'num' then
       id = token.scan_int()
-      if not id > 0 then
+      if id <= 0 then
         error[[id must be positive]]
       end
     elseif token.scan_keyword'name' then
