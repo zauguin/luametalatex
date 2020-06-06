@@ -55,7 +55,7 @@ local function indirect(pdf, num, content, isfile)
   pdf.file:write'\nendobj\n'
   return num
 end
-local function delayed(pdf, num, content, isfile)
+local function delay(pdf, num, content, isfile)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
@@ -123,7 +123,7 @@ local pdfmeta = {
   stream = stream,
   newpage = pagetree.newpage,
   writepages = pagetree.write,
-  delayed = delayed,
+  delayed = delay,
   delayedstream = delayedstream,
   reference = reference,
   written = written,

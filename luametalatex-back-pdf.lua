@@ -111,7 +111,8 @@ callback.register("stop_run", function()
     nodestat[#nodestat + 1] = string.format("%d %s", c, whatsits[id])
   end
   texio.write_nl("  " .. table.concat(nodestat, ', '))
-  texio.write_nl(string.format("Output written on %s (%d pages, %d bytes).\n", pdfname, pages, size))
+  texio.write_nl(string.format("Output written on %s (%d pages, %d bytes).", pdfname, pages, size))
+  texio.write_nl(string.format("Transcript written on %s.\n", status.log_name))
 end, "Finish PDF file")
 token.luacmd("pdfvariable", function()
   for n, t in pairs(pdf.variable_tokens) do

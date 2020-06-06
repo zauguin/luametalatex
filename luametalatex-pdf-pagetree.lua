@@ -1,8 +1,7 @@
 local min = math.min
 local format = string.format
 local concat = table.concat
-local _ENV = {}
-function write(pdf, tree, total, max)
+local function write(pdf, tree, total, max)
   tree = tree or pdf.pages
   if #tree == 0 then 
     local id = pdf:getobj()
@@ -20,7 +19,7 @@ function write(pdf, tree, total, max)
     local id = tree[-i]
     newtree[i+1] = id
     if 0 == i % 6 and #tree > 6 then
-      local parentid = pdf:getid()
+      local parentid = pdf:getobj()
       newtree[-(i//6)] = parentid
       parent = format("/Parent %i 0 R", parentid)
     end
@@ -28,11 +27,11 @@ function write(pdf, tree, total, max)
     remaining = remaining - max
   end
   if #parent > 0 then
-    return writetree(pdf, newtree, total, max*6)
+    return write(pdf, newtree, total, max*6)
   end
   return newtree[1]
 end
-function newpage(pdf)
+local function newpage(pdf)
   local pageid = pdf:getobj()
   local pagenumber = #pdf.pages
   pdf.pages[pagenumber+1] = pageid
@@ -41,4 +40,7 @@ function newpage(pdf)
   end
   return pageid, pdf.pages[-(pagenumber//6)]
 end
-return _ENV
+return {
+  write = write,
+  newpage = newpage,
+}
