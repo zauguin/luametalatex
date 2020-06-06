@@ -106,12 +106,14 @@ local function trailer(pdf)
 end
 local function close(pdf)
   trailer(pdf)
+  local size = pdf.file:seek()
   if #pdf.version ~= 3 then
     error[[Invalid PDF version]]
   end
   pdf.file:seek('set', 5)
   pdf.file:write(pdf.version)
   pdf.file:close()
+  return size
 end
 local pagetree = require'luametalatex-pdf-pagetree'
 local pdfmeta = {

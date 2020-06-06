@@ -1,11 +1,13 @@
 local pdf = pdf
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
-local pfile
+local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
 local dests = {}
 local cur_page
+local whatsit_id = node.id'whatsit'
+local whatsits = node.whatsits()
 local colorstacks = {{
     page = true,
     mode = "direct",
@@ -16,6 +18,7 @@ token.scan_list = token.scan_box -- They are equal if no parameter is present
 local spacer_cmd = token.command_id'spacer'
 local function get_pfile()
   if not pfile then
+    pdfname = tex.jobname .. '.pdf'
     pfile = newpdf.open(tex.jobname .. '.pdf')
   end
   return pfile
@@ -36,6 +39,7 @@ token.luacmd("shipout", function()
   cur_page = nil
   local content = pfile:stream(nil, '', out)
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
+  node.flush_list(list)
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
   token.scan_token()
 end, 'force', 'protected')
@@ -83,9 +87,31 @@ callback.register("stop_run", function()
   end
   pfile.root = pfile:getobj()
   pfile.version = string.format("%i.%i", pdf.variable.majorversion, pdf.variable.minorversion)
+  local pages = #pfile.pages
   pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R%s>>]], pfile.version, pfile:writepages(), catalogdir))
   pfile.info = write_infodir(pfile)
-  pfile:close()
+  local size = pfile:close()
+  texio.write_nl("term", "(see the transcript file for additional information)")
+  -- TODO: Additional logging, epecially targeting the log file
+  texio.write_nl("term and log", string.format(" %d words of node memory still in use:", status.var_used))
+  local by_type, by_sub = {}, {}
+  for n, id, sub in node.traverse(node.usedlist()) do
+    if id == whatsit_id then
+      by_sub[sub] = (by_sub[sub] or 0) + 1
+    else
+      by_type[id] = (by_type[id] or 0) + 1
+    end
+  end
+  local nodestat = {}
+  local types = node.types()
+  for id, c in next, by_type do
+    nodestat[#nodestat + 1] = string.format("%d %s", c, types[id])
+  end
+  for id, c in next, by_sub do
+    nodestat[#nodestat + 1] = string.format("%d %s", c, whatsits[id])
+  end
+  texio.write_nl("  " .. table.concat(nodestat, ', '))
+  texio.write_nl(string.format("Output written on %s (%d pages, %d bytes).\n", pdfname, pages, size))
 end, "Finish PDF file")
 token.luacmd("pdfvariable", function()
   for n, t in pairs(pdf.variable_tokens) do
@@ -102,8 +128,6 @@ token.luacmd("pdfvariable", function()
   texio.write_nl(string.format("Unknown PDF variable %s", token.scan_word()))
   tex.sprint"\\unexpanded{\\undefinedpdfvariable}"
 end)
-local whatsit_id = node.id'whatsit'
-local whatsits = node.whatsits()
 
 local lastobj = -1
 local lastannot = -1
