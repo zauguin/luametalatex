@@ -75,10 +75,9 @@ local function write_infodir(p)
   return p:indirect(nil, string.format("<<%s%s>>", infodir, additional))
 end
 
-local function pdf_string(s)
-  -- Emulate other engines here: If  looks like an escaped string, treat it as such. Otherwise, add parenthesis.
-  return s:match("^%(.*%)$") or s:match("^<.*>$") or '(' .. s .. ')'
-end
+local pdf_escape = require'luametalatex-pdf-escape'
+local pdf_bytestring = pdf_escape.escape_bytes
+local pdf_text = pdf_escape.escape_text
 
 callback.register("stop_run", function()
   if not pfile then
@@ -185,7 +184,7 @@ local function get_action_attr(p, action, is_link)
   local action_attr = is_link and "/Subtype/Link/A<<" or "<<"
   local file = action.file
   if file then
-    action_attr = action_attr .. '/F' .. pdf_string(file)
+    action_attr = action_attr .. '/F' .. pdf_bytestring(file)
     local newwindow = action.new_window
     if newwindow and newwindow > 0 then
       action_attr = action_attr .. '/NewWindow ' .. (newwindow == 1 and 'true' or 'false')
@@ -199,7 +198,7 @@ local function get_action_attr(p, action, is_link)
     local id = action.id
     if file then
       assert(type(id) == "string")
-      action_attr = action_attr .. "/S/GoToR/D" .. pdf_string(id) .. ">>"
+      action_attr = action_attr .. "/S/GoToR/D" .. pdf_bytestring(id) .. ">>"
     else
       local dest = dests[id]
       if not dest then
@@ -207,7 +206,7 @@ local function get_action_attr(p, action, is_link)
         dests[id] = dest
       end
       if type(id) == "string" then
-        action_attr = action_attr .. "/S/GoTo/D" .. pdf_string(id) .. ">>"
+        action_attr = action_attr .. "/S/GoTo/D" .. pdf_bytestring(id) .. ">>"
       else
         action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
       end
@@ -577,11 +576,11 @@ token.luacmd("pdfextension", function(_, imm)
       local level = token.scan_int()
       local open = token.scan_keyword'open'
       local title = token.scan_string()
-      outline:add(pdf_string(title), action, level, open, attr)
+      outline:add(pdf_text(title), action, level, open, attr)
     else
       local count = token.scan_keyword'count' and token.scan_int() or 0
       local title = token.scan_string()
-      outline:add_legacy(pdf_string(title), action, count, attr)
+      outline:add_legacy(pdf_text(title), action, count, attr)
     end
   elseif token.scan_keyword"dest" then
     local id

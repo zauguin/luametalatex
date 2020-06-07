@@ -14,10 +14,9 @@ local function write(pdf, tree, escaped, step)
   move(tree, #tree+1, 2*#tree-nextcount, nextcount+1)
   return write(pdf, tree, escaped, step*6)
 end
-local function pdf_string(s)
-  -- Emulate other engines here: If  looks like an escaped string, treat it as such. Otherwise, add parenthesis.
-  return s:match("^%(.*%)$") or s:match("^<.*>$") or '(' .. s .. ')'
-end
+
+local pdf_bytestring = require'luametalatex-pdf-escape'.escape_bytes
+
 local serialized = {}
 return function(values, pdf)
   local tree = {}
@@ -35,7 +34,7 @@ return function(values, pdf)
       local key = tree[6*i+j]
       if key then
         local value = values[key]
-        key = pdf_string(key)
+        key = pdf_bytestring(key)
         tree[6*i+j] = key
         serialized[2*j-1] = key
         serialized[2*j] = value

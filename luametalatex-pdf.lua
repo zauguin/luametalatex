@@ -14,7 +14,8 @@ local function written(pdf, num)
   if not num or num == assigned then return end
   return num ~= delayed
 end
-local function stream(pdf, num, dict, content, isfile)
+-- raw: Pass on preencoded stream. Currently ignored.
+local function stream(pdf, num, dict, content, isfile, raw)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]

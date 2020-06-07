@@ -324,7 +324,8 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
 end
 function nodehandler.kern() end
 function nodehandler.penalty() end
-local literalescape = lpeg.Cs((lpeg.S'\\()\r'/{['\\'] = '\\\\', ['('] = '\\(', [')'] = '\\)', ['\r'] = '\\r'}+1)^0)
+
+local pdf_escape = require'luametalatex-pdf-escape'.escape_raw
 local match = lpeg.match
 local function do_commands(p, c, f, fid, x, y, outer, ...)
   local fonts = f.fonts
@@ -407,20 +408,20 @@ function nodehandler.glyph(p, n, x, y, ...)
     -- if f.encodingbytes == -3 then
     if false then
       if index < 0x80 then
-        p.pending[#p.pending+1] = match(literalescape, string.pack('>B', index))
+        p.pending[#p.pending+1] = pdf_escape(string.pack('>B', index))
       elseif index < 0x7F80 then
-        p.pending[#p.pending+1] = match(literalescape, string.pack('>H', index+0x7F80))
+        p.pending[#p.pending+1] = pdf_escape(string.pack('>H', index+0x7F80))
       else
-        p.pending[#p.pending+1] = match(literalescape, string.pack('>BH', 0xFF, index-0x7F80))
+        p.pending[#p.pending+1] = pdf_escape(string.pack('>BH', 0xFF, index-0x7F80))
       end
     else
-      p.pending[#p.pending+1] = match(literalescape, string.pack('>H', index))
+      p.pending[#p.pending+1] = pdf_escape(string.pack('>H', index))
     end
     if not p.usedglyphs[index] then
       p.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size + .5), c.tounicode}
     end
   else
-    p.pending[#p.pending+1] = match(literalescape, string.char(getchar(n)))
+    p.pending[#p.pending+1] = pdf_escape(string.char(getchar(n)))
     if not p.usedglyphs[getchar(n)] then
       p.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size + .5), c.tounicode}
     end
