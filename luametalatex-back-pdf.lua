@@ -572,14 +572,16 @@ token.luacmd("pdfextension", function(_, imm)
       local actionobj = scan_action()
       action = pfile:indirect(nil, get_action_attr(pfile, actionobj))
     end
+    local outline = get_outline()
     if token.scan_keyword'level' then
       local level = token.scan_int()
       local open = token.scan_keyword'open'
-      local outline = get_outline()
       local title = token.scan_string()
       outline:add(pdf_string(title), action, level, open, attr)
     else
-      error[[Legacy outline not yet supported]]
+      local count = token.scan_keyword'count' and token.scan_int() or 0
+      local title = token.scan_string()
+      outline:add_legacy(pdf_string(title), action, count, attr)
     end
   elseif token.scan_keyword"dest" then
     local id

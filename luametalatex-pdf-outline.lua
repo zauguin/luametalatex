@@ -1,8 +1,3 @@
-local outline = {
-  { title = "title 1", attr = "", open = true, level = 5,
-    { ... },
-  }
-}
 local function add_outline(outline, title, action, level, open, attr)
   local entry = {title = title, action = action, attr = attr, open = open, level = level}
   -- Now find the right nesting level. We have to deal with non-continuous
@@ -14,6 +9,31 @@ local function add_outline(outline, title, action, level, open, attr)
     outline = outline[#outline]
   until not outline or outline.level >= level
   parent[#parent + 1] = entry 
+end
+local function add_legacy(outline, title, action, count, attr)
+  local state = outline.legacy
+  if not state then
+    state = {}
+    outline.legacy = state
+  end
+  local level = #state
+  if level ~= 0 then
+    state[level] = state[level] - 1
+  end
+  local open
+  if count and count ~= 0 then
+    open = count > 0
+    if not open then
+      count = -count
+    end
+    state[level+1] = count
+  else
+    open = false -- Doesn't matter without children
+    while state[#state] == 0 do
+      state[#state] = nil
+    end
+  end
+  return outline:add(title, action, level, open, attr)
 end
 local function assign_objnum(pdf, outline)
   local objnum = pdf:getobj()
@@ -94,6 +114,7 @@ end
 local meta = {__index = {
   write = write_outline,
   add = add_outline,
+  add_legacy = add_legacy,
 }}
 return function()
   return setmetatable({}, meta)
