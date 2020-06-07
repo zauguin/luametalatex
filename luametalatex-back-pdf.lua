@@ -1,6 +1,7 @@
 local pdf = pdf
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
+local nametree = require'luametalatex-pdf-nametree'
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
@@ -23,6 +24,13 @@ local function get_pfile()
   end
   return pfile
 end
+local outline
+local function get_outline()
+  if not outline then
+    outline = require'luametalatex-pdf-outline'()
+  end
+  return outline
+end
 local properties = node.direct.properties
 token.luacmd("shipout", function()
   local pfile = get_pfile()
@@ -44,6 +52,7 @@ token.luacmd("shipout", function()
   token.scan_token()
 end, 'force', 'protected')
 local infodir = ""
+local namesdir = ""
 local catalogdir = ""
 local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
 local function write_infodir(p)
@@ -87,7 +96,26 @@ callback.register("stop_run", function()
   end
   pfile.root = pfile:getobj()
   pfile.version = string.format("%i.%i", pdf.variable.majorversion, pdf.variable.minorversion)
+  local destnames = {}
+  for k,obj in next, dests do
+    if pfile:written(obj) then
+      if type(k) == 'string' then
+        destnames[k] = obj .. ' 0 R'
+      end
+    else
+      texio.write_nl("Warning: Undefined destination %q", tostring(k))
+    end
+  end
+  if next(destnames) then
+    namesdir = string.format("/Dests %i 0 R%s", nametree(destnames, pfile), namesdir or '')
+  end
+  if namesdir then
+    catalogdir = string.format("/Names<<%s>>%s", namesdir, catalogdir)
+  end
   local pages = #pfile.pages
+  if outline then
+    catalogdir = string.format("/Outlines %i 0 R%s", outline:write(pfile), catalogdir)
+  end
   pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R%s>>]], pfile.version, pfile:writepages(), catalogdir))
   pfile.info = write_infodir(pfile)
   local size = pfile:close()
@@ -151,10 +179,10 @@ local function projected(m, x, y, w)
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
 
-local function get_action_attr(p, action)
+local function get_action_attr(p, action, is_link)
   local action_type = action.action_type
   if action_type == 3 then return action.data end
-  local action_attr = "/Subtype/Link/A<<"
+  local action_attr = is_link and "/Subtype/Link/A<<" or "<<"
   local file = action.file
   if file then
     action_attr = action_attr .. '/F' .. pdf_string(file)
@@ -190,7 +218,7 @@ end
 local function write_link(p, link)
   local quads = link.quads
   local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
-  local attr = link.attr .. get_action_attr(p, link.action)
+  local attr = link.attr .. get_action_attr(p, link.action, true)
   assert(#quads%8==0)
   local quadStr = {}
   for i=1,#quads,8 do
@@ -421,7 +449,7 @@ end
 local function maybe_gobble_cmd(cmd)
   local t = token.scan_token()
   if t.command ~= cmd then
-    token.put_next(cmd)
+    token.put_next(t)
   end
 end
 token.luacmd("pdffeedback", function()
@@ -500,6 +528,8 @@ token.luacmd("pdfextension", function(_, imm)
     infodir = infodir .. token.scan_string()
   elseif token.scan_keyword"catalog" then
     catalogdir = catalogdir .. ' ' .. token.scan_string()
+  elseif token.scan_keyword"names" then
+    namesdir = namesdir .. ' ' .. token.scan_string()
   elseif token.scan_keyword"obj" then
     local pfile = get_pfile()
     if token.scan_keyword"reserveobjnum" then
@@ -532,6 +562,25 @@ token.luacmd("pdfextension", function(_, imm)
         handle = do_refobj,
       })
     node.write(whatsit)
+  elseif token.scan_keyword"outline" then
+    local pfile = get_pfile()
+    local attr = token.scan_keyword'attr' and token.scan_string() or ''
+    local action
+    if token.scan_keyword"useobjnum" then
+      action = token.scan_int()
+    else
+      local actionobj = scan_action()
+      action = pfile:indirect(nil, get_action_attr(pfile, actionobj))
+    end
+    if token.scan_keyword'level' then
+      local level = token.scan_int()
+      local open = token.scan_keyword'open'
+      local outline = get_outline()
+      local title = token.scan_string()
+      outline:add(pdf_string(title), action, level, open, attr)
+    else
+      error[[Legacy outline not yet supported]]
+    end
   elseif token.scan_keyword"dest" then
     local id
     if token.scan_keyword'num' then
