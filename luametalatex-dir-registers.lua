@@ -37,7 +37,6 @@ return function(name)
   local setter = tex["set" .. name]
   assert(getter and setter, "direction parameter undefined")
   local idx = token.luacmd(name, set_xdir, "protected", "global", "value")
-  -- names[idx] = name
   getters[idx] = getter
   setters[idx] = setter
   return idx

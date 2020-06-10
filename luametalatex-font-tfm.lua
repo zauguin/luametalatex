@@ -136,6 +136,7 @@ end
 local basename = ((1-lpeg.S'\\/')^0*lpeg.S'\\/')^0*lpeg.C((1-lpeg.P'.tfm'*-1)^0)
 return function(name, size)
   local filename = kpse.find_file(name, 'tfm', true)
+  if not filename then return end
   local f = io.open(filename)
   if not f then return end
   local buf = f:read'*a'

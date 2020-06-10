@@ -1,5 +1,5 @@
 do
-  local ourpath = arg[0]:match('^%-%-lua=(.*)luametalatex%-init%.lua$')
+  local ourpath = arg[0]:match('^%-%-lua=(.*[/\\])[^/\\]*%.lua$')
   kpse = assert(package.loadlib(ourpath .. 'kpse.so', 'luaopen_kpse'))()
 end
 do
@@ -35,6 +35,7 @@ local read_tfm = require'luametalatex-font-tfm'
 local read_vf = require'luametalatex-font-vf'
 font.read_tfm = read_tfm
 font.read_vf = read_vf
+local callback_register = callback.register
 require'module'
 font.fonts = {}
 function font.getfont(id)
@@ -51,7 +52,7 @@ function font.define(f)
   font.fonts[i] = f
   return i
 end
-callback.register('define_font', function(name, size)
+callback_register('define_font', function(name, size)
   local f = read_tfm(name, size)
   local id = font.define(f)
   if status.ini_version then
@@ -59,12 +60,26 @@ callback.register('define_font', function(name, size)
   end
   return id
 end)
-callback.register('find_log_file', function(name) return name end)
--- callback.register('find_read_file', function(i, name) return kpse.find_file(name, 'tex', true) end)
-callback.register('find_data_file', function(name, ...) return kpse.find_file(name, 'tex', true) end)
-callback.register('read_data_file', function(name) error[[TODO]]return kpse.find_file(name, 'tex', true) end)
+callback_register('find_log_file', function(name) return name end)
+do
+  local function normal_find_data_file(name)
+    return kpse.find_file(name, 'tex', true)
+  end
+  if status.ini_version then
+    callback_register('find_data_file', function(name)
+      if name == 'ltexpl.ltx' then
+        callback_register('find_data_file', normal_find_data_file)
+        name = 'luametalatex-ltexpl-hook'
+      end
+      return normal_find_data_file(name)
+    end)
+  else
+    callback_register('find_data_file', normal_find_data_file)
+  end
+end
+callback_register('read_data_file', function(name) error[[TODO]]return kpse.find_file(name, 'tex', true) end)
 -- local file_meta = {\
-callback.register('open_data_file', function(name)
+callback_register('open_data_file', function(name)
   local f = io.open(name)
   return setmetatable({
     reader = function() return f:read() end,
@@ -73,13 +88,13 @@ callback.register('open_data_file', function(name)
     __gc = function()f:close()end,
   })
 end)
-callback.register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
-callback.register('handle_error_hook', function()
+callback_register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
+callback_register('handle_error_hook', function()
   repeat
     texio.write_nl'? '
     local line = io.read()
     if not line then
-      error[[TODO: Handle EOL]]
+      tex.fatalerror'End of line encountered on terminal'
     end
     if line == "" then return 3 end
     local first = line:sub(1,1):upper()
@@ -102,10 +117,9 @@ callback.register('handle_error_hook', function()
 \z      H for help, X to quit.'
     end
   until false
-  -- print('handle')
   return 3
 end)
-callback.register('pre_dump', function()
+callback_register('pre_dump', function()
   lua.prepared_code[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())
   lua.bytecode[1] = assert(load(table.concat(lua.prepared_code, ' ')))
 end)

@@ -29,6 +29,7 @@ local getexpansion = direct.getexpansion
 local getchar = direct.getchar
 local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
+local getdata = direct.getdata
 
 local dir_id = node.id'dir'
 
@@ -97,8 +98,6 @@ local function totext(p, fid)
   p.font.font = f
   return false -- Return true if we need a new textmatrix
 end
-local inspect = require'inspect'
-local function show(t) print(inspect(t)) end
 function topage(p)
   local last = p.mode
   if last == page then return end
@@ -218,25 +217,38 @@ function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
     y = y - (d or 0)
   end
 end
+do
+local rulesubtypes = {}
+for i, n in next, node.subtypes'rule' do
+  rulesubtypes[n] = i
+end
+local box_rule = rulesubtypes.box
+local image_rule = rulesubtypes.image
+local user_rule = rulesubtypes.user
+local empty_rule = rulesubtypes.empty
+local outline_rule = rulesubtypes.outline
+local ship_img = require'luametalatex-pdf-image'.ship
 function nodehandler.rule(p, n, x, y, outer)
   if getwidth(n) == -1073741824 then setwidth(n, getwidth(outer)) end
   if getheight(n) == -1073741824 then setheight(n, getheight(outer)) end
   if getdepth(n) == -1073741824 then setdepth(n, getdepth(outer)) end
   local sub = getsubtype(n)
-  if sub == 1 then
+  if sub == box_rule then
     error[[We can't handle boxes yet]]
-  elseif sub == 2 then
-    error[[We can't handle images yet]]
-  elseif sub == 3 then
-  elseif sub == 4 then
+  elseif sub == image_rule then
+    if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
+    ship_img(getdata(n), p, n, x, y)
+  elseif sub == empty_rule then
+  elseif sub == user_rule then
     error[[We can't handle user rules yet]]
-  elseif sub == 9 then
+  elseif sub == outline_rule then
     error[[We can't handle outline rules yet]]
   else
     if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
     topage(p)
     p.strings[#p.strings+1] = gsub(format("%f %f %f %f re f", sp2bp(x), sp2bp(y - getdepth(n)), sp2bp(getwidth(n)), sp2bp(getdepth(n) + getheight(n))), '%.?0+ ', ' ')
   end
+end
 end
 function nodehandler.boundary() end
 function nodehandler.disc(p, n, x, y, list, ...) -- FIXME: I am not sure why this can happen, let's assume we can use .replace
