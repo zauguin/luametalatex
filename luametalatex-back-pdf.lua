@@ -24,6 +24,7 @@ local function get_pfile()
   end
   return pfile
 end
+pdf.__get_pfile = get_pfile
 local outline
 local function get_outline()
   if not outline then
@@ -646,3 +647,4 @@ token.luacmd("pdfextension", function(_, imm)
     error(string.format("Unknown PDF extension %s", token.scan_word()))
   end
 end, "protected")
+img = require'luametalatex-pdf-image'

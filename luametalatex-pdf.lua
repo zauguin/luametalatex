@@ -31,13 +31,13 @@ local function stream(pdf, num, dict, content, isfile, raw)
   pdf.file:write'\nendstream\nendobj\n'
   return num
 end
-local function delayedstream(pdf, num, dict, content, isfile)
+local function delayedstream(pdf, num, dict, content, isfile, raw)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
   end
   pdf[num] = delayed
-  pdf[-num] = {stream, dict, content, isfile}
+  pdf[-num] = {stream, dict, content, isfile, raw}
   return num
 end
 local function indirect(pdf, num, content, isfile)
