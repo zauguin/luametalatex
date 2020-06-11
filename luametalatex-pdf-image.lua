@@ -4,8 +4,7 @@ local nodenew = node.direct.new
 local getwhd = node.direct.getwhd
 local setwhd = node.direct.setwhd
 local tonode = node.direct.tonode
-
-local reserve
+local nodewrite = node.direct.write
 
 local box_fallback = {
   BleedBox = "CropBox",
@@ -77,7 +76,7 @@ local function scan_pdf(img)
 end
 
 local pdfe_deepcopy = require'luametalatex-pdfe-deepcopy'
-local function write_pdf(img, pfile)
+local function write_pdf(pfile, img)
   local file = open_pdfe(img)
   local page = pdfe.getpage(file, img.page)
   local bbox = img.bbox
@@ -189,15 +188,14 @@ local function scan(img)
 end
 
 local img_by_objnum = {}
-local function img_from_objnum(objnum, img)
-  img = img or {}
-  real_images[img] = assert(img_by_objnum[objnum])
-  return setmetatable(img, restricted_meta)
-end
+-- local function img_from_objnum(objnum, img)
+  -- img = img or {}
+  -- real_images[img] = assert(img_by_objnum[objnum])
+  -- return setmetatable(img, restricted_meta)
+-- end
 
 -- Noop if already reserved
-function reserve(img, pfile)
-  local real = assert(real_images[img])
+function reserve(pfile, real)
   local obj = real.objnum or pfile:getobj()
   real.objnum = obj
   img_by_objnum[obj] = real
@@ -205,24 +203,20 @@ function reserve(img, pfile)
 end
 
 local function write_img(pfile, img)
-  local objnum = reserve(img, pfile)
-  local real = real_images[img]
-  if not real.written then
-    real.written = true
-    write_pdf(real, pfile)
+  local objnum = reserve(pfile, img)
+  if not img.written then
+    img.written = true
+    write_pdf(pfile, img)
   end
 end
 local function do_img(data, p, n, x, y)
-  local img = {}
-  img_from_objnum(data >> 3, img)
-  -- scan(img)
+  local img = assert(img_by_objnum[data >> 3], 'Invalid image ID')
   write_img(p.file, img)
-  local real = real_images[img]
   local mirror = data & 4 == 4
-  local rotate = (data + img.rotation) % 8
+  local rotate = (data + img.rotation) & 3
   local width, height, depth = getwhd(n)
   height = height + depth
-  local bbox = real.bbox
+  local bbox = img.bbox
   local xsize, ysize = img.xsize, img.ysize
   local a, b, c, d, e, f = 1, 0, 0, 1, -bbox[1], -bbox[2]
   if mirror then
@@ -238,35 +232,35 @@ local function do_img(data, p, n, x, y)
   a, c, e = a*xscale, c*xscale, e*xscale
   b, d, f = b*yscale, d*yscale, f*yscale
   e, f = to_bp(x + e), to_bp(y - depth + f)
-  p.resources.XObject['Im' .. tostring(real.objnum)] = real.objnum
-  pdf.write('page', string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, real.objnum), nil, nil, p)
+  p.resources.XObject['Im' .. tostring(img.objnum)] = img.objnum
+  pdf.write('page', string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, img.objnum), nil, nil, p)
 end
 local ruleid = node.id'rule'
 local ruletypes = node.subtypes'rule'
 local imagerule
 for n, name in next, ruletypes do
-  if name == 'image' then
-    imagerule = n
-    break
-  end
+  if name == 'image' then imagerule = n break end
 end
 assert(imagerule)
-local function node(img, pfile)
-  pfile = pfile or pdf.__get_pfile()
-  scan(img)
+local function node(pfile, img)
+  img = scan(img)
   local n = nodenew(ruleid, imagerule) -- image
-  setdata(n, (reserve(img, pfile) << 3) | ((img.transform or 0) & 7))
+  setdata(n, (reserve(pfile, real_images[img]) << 3) | ((img.transform or 0) & 7))
   setwhd(n, img.width or -0x40000000, img.height or -0x40000000, img.depth or -0x40000000)
   return tonode(n)
 end
 
---[[
-local function write(img, immediate, pfile)
-  pfile = pfile or pdf.__get_pfile()
-  local _, objnum = reserve(img, pfile)
-  local real = real_images[img]
+local function write(pfile, img)
+  img = scan(img)
+  nodewrite(node(pfile, img))
+  return img
 end
-]]
+
+local function immediatewrite(pfile, img)
+  img = scan(img)
+  write_img(pfile, real_images[img])
+  return img
+end
 
 return {
   new = new,

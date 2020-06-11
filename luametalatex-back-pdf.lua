@@ -24,7 +24,6 @@ local function get_pfile()
   end
   return pfile
 end
-pdf.__get_pfile = get_pfile
 local outline
 local function get_outline()
   if not outline then
@@ -647,4 +646,14 @@ token.luacmd("pdfextension", function(_, imm)
     error(string.format("Unknown PDF extension %s", token.scan_word()))
   end
 end, "protected")
-img = require'luametalatex-pdf-image'
+imglib = require'luametalatex-pdf-image'
+local imglib_node = imglib.node
+local imglib_write = imglib.write
+local imglib_immediatewrite = imglib.immediatewrite
+img = {
+  new = imglib.new,
+  scan = imglib.scan,
+  node = function(img, pfile) return imglib_node(pfile or get_pfile(), img) end,
+  write = function(img, pfile) return imglib_write(pfile or get_pfile(), img) end,
+  immediatewrite = function(img, pfile) return imglib_immediatewrite(pfile or get_pfile(), img) end,
+}
