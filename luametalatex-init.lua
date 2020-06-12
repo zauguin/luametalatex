@@ -78,11 +78,29 @@ do
   end
 end
 callback_register('read_data_file', function(name) error[[TODO]]return kpse.find_file(name, 'tex', true) end)
--- local file_meta = {\
+local input_pattern do
+  local hex = lpeg.R('09', 'af')
+  local hexx = hex * hex
+  local tonumber = tonumber
+  local char = utf8.char
+  local sub = string.sub
+  local char = lpeg.Cg('^^' * (
+        ('^^' * ('^^' * hexx)^-1 * hexx)^-1 * hexx/function(s)
+          local cp = tonumber(sub(s, #s/2), 16)
+          return cp == 0 and '^^@' or char(cp)
+        end
+      -- + lpeg.R'\0\63' / function(s) return char(s:byte()+64) end
+      -- + lpeg.R'\63\127' / function(s) return char(s:byte()-64) end
+    )) + 1
+  input_pattern = lpeg.Cs(char^0)
+end
 callback_register('open_data_file', function(name)
   local f = io.open(name)
   return setmetatable({
-    reader = function() return f:read() end,
+    reader = function()
+      local line = f:read()
+      return line and input_pattern:match(line)
+    end,
     close = function()error[[1]] return f:close() end,
   }, {
     __gc = function()f:close()end,
