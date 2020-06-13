@@ -159,7 +159,6 @@ end)
 
 local lastobj = -1
 local lastannot = -1
-local lastimage = -1
 
 function pdf.newcolorstack(default, mode, page)
   local idx = #colorstacks
@@ -659,6 +658,9 @@ img = {
   immediatewrite = function(img, pfile) return imglib_immediatewrite(pfile or get_pfile(), img) end,
 }
 
+local lastimage = -1
+local lastimagepages = -1
+
 -- These are very minimal right now but LaTeX isn't using the scaling etc. stuff anyway.
 token.luacmd("saveimageresource", function(imm)
   local attr = token.scan_keyword'attr' and token.scan_string() or nil
@@ -679,15 +681,32 @@ token.luacmd("saveimageresource", function(imm)
     userpassword = userpassword,
     ownerpassword = ownerpassword,
     pagebox = pagebox,
+    filename = filename,
   }
   local pfile = get_pfile()
   lastimage = imglib.get_num(pfile, img)
+  lastimagepages = img.pages or 1
   if imm == 'immediate' then
     imglib_immediatewrite(pfile, img)
   end
 end, "protected")
+
 token.luacmd("useimageresource", function()
   local pfile = get_pfile()
   local img = assert(imglib.from_num(token.scan_int()))
   imglib_write(pfile, img)
 end, "protected")
+
+local value_values = token.values'value'
+for i=0,#value_values do
+  value_values[value_values[i]] = i
+end
+local integer_code = value_values.integer
+
+token.luacmd("lastsavedimageresourceindex", function()
+  return integer_code, lastimage
+end, "protected", "value")
+
+token.luacmd("lastsavedimageresourcepages", function()
+  return integer_code, lastimagepages
+end, "protected", "value")

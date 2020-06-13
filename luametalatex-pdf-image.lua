@@ -4,7 +4,7 @@ local nodenew = node.direct.new
 local getwhd = node.direct.getwhd
 local setwhd = node.direct.setwhd
 local tonode = node.direct.tonode
-local nodewrite = node.direct.write
+local nodewrite = node.write
 
 local box_fallback = {
   BleedBox = "CropBox",
