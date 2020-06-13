@@ -7,9 +7,9 @@
     local t = token.create(s)
     return token.new(t.mode, t.command)
   end
-  local dimen_cmd = token.command_id'assign_dimen'
-  local count_cmd = token.command_id'assign_int'
-  local toks_cmd = token.command_id'assign_toks'
+  local dimen_cmd = token.command_id'register_dimen'
+  local count_cmd = token.command_id'register_int'
+  local toks_cmd = token.command_id'register_toks'
   local tex_params = {}
   local texmeta = getmetatable(tex)
   local texmetaoldindex = texmeta.__index
@@ -55,8 +55,6 @@
         elseif v.command == toks_cmd then
           return tex.toks[v.index]
         end
-      else
-        return texmetaoldindex(t, k)
       end
     end,
     __newindex = function(t, k, v)
@@ -70,7 +68,7 @@
           tex.toks[p.index] = v
         end
       else
-        return texmetaoldnewindex(t, k, v)
+        return rawset(t, k, v)
       end
     end,
   })
