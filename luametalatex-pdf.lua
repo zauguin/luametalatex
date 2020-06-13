@@ -7,6 +7,8 @@ local pairs = pairs
 local setmetatable = setmetatable
 local assigned = {}
 local delayed = {}
+local compress = xzip.compress
+local pdfvariable = pdf.variable
 -- slightly tricky interface: No/nil return means that the objects content
 -- isn't known yet, while false indicates a delayed object.
 local function written(pdf, num)
@@ -26,7 +28,16 @@ local function stream(pdf, num, dict, content, isfile, raw)
     content = f:read'a'
     f:close()
   end
-  pdf.file:write(format('%i 0 obj\n<<%s/Length %i>>stream\n', num, dict, #content))
+  local level = not raw and pdfvariable.compresslevel or 0
+  local filter = ''
+  if level > 0 then
+    local compressed = compress(content, level)
+    if #compressed < #content + 19 then -- Filter has some overhead
+      filter = "/Filter/FlateDecode"
+      content = compressed
+    end
+  end
+  pdf.file:write(format('%i 0 obj\n<<%s%s/Length %i>>stream\n', num, dict, filter, #content))
   pdf.file:write(content)
   pdf.file:write'\nendstream\nendobj\n'
   return num

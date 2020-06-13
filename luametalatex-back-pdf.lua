@@ -1,4 +1,5 @@
 local pdf = pdf
+local pdfvariable = pdf.variable
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
@@ -35,9 +36,9 @@ local properties = node.direct.properties
 token.luacmd("shipout", function()
   local pfile = get_pfile()
   local voff = node.new'kern'
-  voff.kern = tex.voffset + pdf.variable.vorigin
+  voff.kern = tex.voffset + pdfvariable.vorigin
   voff.next = token.scan_list()
-  voff.next.shift = tex.hoffset + pdf.variable.horigin
+  voff.next.shift = tex.hoffset + pdfvariable.horigin
   local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
   list.height = tex.pageheight
   list.width = tex.pagewidth
@@ -94,7 +95,7 @@ callback.register("stop_run", function()
     pfile:indirect(id, require'luametalatex-pdf-font'(pfile, f, sorted))
   end
   pfile.root = pfile:getobj()
-  pfile.version = string.format("%i.%i", pdf.variable.majorversion, pdf.variable.minorversion)
+  pfile.version = string.format("%i.%i", pdfvariable.majorversion, pdfvariable.minorversion)
   local destnames = {}
   for k,obj in next, dests do
     if pfile:written(obj) then
@@ -235,7 +236,7 @@ local function write_link(p, link)
 end
 local function addlinkpoint(p, link, x, y, list, kind)
   local quads = link.quads
-  local off = pdf.variable.linkmargin
+  local off = pdfvariable.linkmargin
   x = kind == 'start' and x-off or x+off
   if link.annots and link.annots ~= p.annots then -- We started on another page, let's finish that before starting the new page
     write_link(p, link)

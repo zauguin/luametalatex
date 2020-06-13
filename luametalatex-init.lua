@@ -45,6 +45,7 @@ pdf = {
   getfontname = function(id) -- No font sharing
     return id
   end,
+  variable = {},
 }
 local olddefinefont = font.define
 function font.define(f)

@@ -46,7 +46,7 @@
   end
   local pdf_params = {}
   pdf.variable_tokens = pdf_params
-  pdf.variable = setmetatable({}, {
+  setmetatable(pdf.variable, {
     __index = function(t, k)
       local v = pdf_params[k]
       if v then
@@ -99,8 +99,8 @@
 \pdfAlloc{dimen}{linkmargin}{0pt}
 \pdfAlloc{count}{majorversion}{1}
 \pdfAlloc{count}{minorversion}{7}
-\pdfAlloc{count}{compresslevel}{0} % 0 is actually the only supported value right now, so this is basically ignored
-\pdfAlloc{count}{objcompresslevel}{0} % see above
+\pdfAlloc{count}{compresslevel}{0}
+\pdfAlloc{count}{objcompresslevel}{0} % 0 is actually the only supported value right now, so this is basically ignored
 \pdfAlloc{toks}{pageresources}{{}}
 
 \texAlloc{count}{bodydirection}{0}
