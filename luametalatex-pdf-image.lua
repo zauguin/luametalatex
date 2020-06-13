@@ -226,12 +226,10 @@ local function do_img(data, p, n, x, y)
   if mirror then
     a, e = -a, -e+xsize
   end
-  print(img.rotation, rotate, data, a, b, c, d, e, f)
   for i=1,rotate do
     a, b, c, d, e, f = -b, a, -d, c, -f+ysize, e
     xsize, ysize = ysize, xsize
   end
-  print(a, b, c, d, e, f)
   local xscale, yscale = width / xsize, height / ysize
   a, c, e = a*xscale, c*xscale, e*xscale
   b, d, f = b*yscale, d*yscale, f*yscale
