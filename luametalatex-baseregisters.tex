@@ -5,7 +5,9 @@
   do
   local function frozen(s)
     local t = token.create(s)
-    return token.new(t.mode, t.command)
+    return t
+    % print(t, token.new(t.mode, t.command), t.mode, t.command, t.data, t.cmdchrcs)
+    % return token.new(t.mode, t.command)
   end
   local dimen_cmd = token.command_id'register_dimen'
   local count_cmd = token.command_id'register_int'
