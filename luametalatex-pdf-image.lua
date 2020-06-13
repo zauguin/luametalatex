@@ -102,6 +102,10 @@ local function write_pdf(pfile, img)
   else
     content = ''
   end
+  local attr = img.attr
+  if attr then
+    dict = dict .. attr
+  end
   pfile:stream(img.objnum, dict, content, nil, raw)
 end
 
@@ -267,5 +271,13 @@ return {
   scan = scan,
   write = write,
   node = node,
+  from_num = function(i)
+    local img = {}
+    real_images[img] = assert(img_by_objnum[i])
+    return setmetatable(img, restricted_meta)
+  end,
+  get_num = function(pfile, img)
+    return reserve(pfile, real_images[img])
+  end,
   ship = do_img,
 }

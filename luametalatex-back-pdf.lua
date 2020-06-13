@@ -159,6 +159,7 @@ end)
 
 local lastobj = -1
 local lastannot = -1
+local lastimage = -1
 
 function pdf.newcolorstack(default, mode, page)
   local idx = #colorstacks
@@ -657,3 +658,36 @@ img = {
   write = function(img, pfile) return imglib_write(pfile or get_pfile(), img) end,
   immediatewrite = function(img, pfile) return imglib_immediatewrite(pfile or get_pfile(), img) end,
 }
+
+-- These are very minimal right now but LaTeX isn't using the scaling etc. stuff anyway.
+token.luacmd("saveimageresource", function(imm)
+  local attr = token.scan_keyword'attr' and token.scan_string() or nil
+  local page = token.scan_keyword'page' and token.scan_int() or nil
+  local userpassword = token.scan_keyword'userpassword' and token.scan_string() or nil
+  local ownerpassword = token.scan_keyword'ownerpassword' and token.scan_string() or nil
+  -- local colorspace = token.scan_keyword'colorspace' and token.scan_int() or nil -- Doesn't make sense for PDF
+  local pagebox = token.scan_keyword'mediabox' and 'media'
+               or token.scan_keyword'cropbox' and 'crop'
+               or token.scan_keyword'bleedbox' and 'bleed'
+               or token.scan_keyword'trimbox' and 'trim'
+               or token.scan_keyword'artbox' and 'art'
+               or nil
+  local filename = token.scan_string()
+  local img = imglib.scan{
+    attr = attr,
+    page = page,
+    userpassword = userpassword,
+    ownerpassword = ownerpassword,
+    pagebox = pagebox,
+  }
+  local pfile = get_pfile()
+  lastimage = imglib.get_num(pfile, img)
+  if imm == 'immediate' then
+    imglib_immediatewrite(pfile, img)
+  end
+end, "protected")
+token.luacmd("useimageresource", function()
+  local pfile = get_pfile()
+  local img = assert(imglib.from_num(token.scan_int()))
+  imglib_write(pfile, img)
+end, "protected")
