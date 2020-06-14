@@ -15,6 +15,27 @@ local function read_scaled(buf, i, count, factor)
   end
   return result,  i + count * 4
 end
+local function parse_ligkern(buf, offset, r_boundary, kerns)
+  local kerns, ligatures, done = {}, {}, {}
+  repeat
+    local skip, next, op, rem
+    skip, next, op, rem, offset = string.unpack("BBBB", buf, offset)
+    if skip > 128 then break end
+    if next == r_boundary then next = "right_boundary" end
+    if not done[next] then
+      done[next] = true
+      if op >= 128 then
+        kerns[next] = kerns[(op - 128 << 8) + rem + 1]
+      else
+        ligatures[next] = {
+          type = op,
+          char = rem,
+        }
+      end
+    end
+  until skip == 128
+  return next(kerns) and kerns or nil, next(ligatures) and ligatures or nil
+end
 local function parse_tfm(buf, i, size)
   local lf, lh, bc, ec, nw, nh, nd, ni, nl, nk, ne, np
   lf, lh, bc, ec, nw, nh, nd, ni, nl, nk, ne, np, i =
@@ -43,7 +64,7 @@ local function parse_tfm(buf, i, size)
     italics, i = read_scaled(buf, i, ni, size)
     for k,v in ipairs(italics) do if v == 0 then italics[k] = nil end end
     ligatureoffset = i
-    if string.byte(buf, i, i) > 128 then
+    if nl ~= 0 and string.byte(buf, i, i) == 255 then
       r_boundary = string.byte(buf, i+1, i+1)
     end
     i = i + nl * 4
@@ -56,7 +77,7 @@ local function parse_tfm(buf, i, size)
       end
       extensibles[j] = ext
     end
-    local slant = string.unpack(">i4", buf, i) >> 4
+    local slant = np ~= 0 and string.unpack(">i4", buf, i) >> 4 or nil
     parameters = read_scaled(buf, i, np, size)
     parameters[1] = slant
   end
@@ -76,30 +97,9 @@ local function parse_tfm(buf, i, size)
       elseif tag == 1 then
         local offset = (charinfo & 0xFF) * 4 + ligatureoffset
         if string.byte(buf, offset, offset) > 128 then
-          offset = string.unpack(">H", buf, offset + 2)
+          offset = string.unpack(">H", buf, offset + 2) * 4 + ligatureoffset
         end
-        char.kerns, char.ligatures = {}, {}
-        local done = {}
-        repeat
-          local skip, next, op, rem
-          skip, next, op, rem, offset = string.unpack("BBBB", buf, offset)
-          if skip > 128 then break end
-          if next == r_boundary then next = "right_boundary" end
-          if not done[next] then
-            done[next] = true
-            if op >= 128 then
-              char.kerns[next] = kerns[(op - 128 << 8) + rem + 1]
-            else
-              char.ligatures[next] = {
-                type = op,
-                char = rem,
-              }
-            end
-          end
-          offset = offset + 4*skip
-        until skip == 128
-        if not next(char.kerns) then char.kerns = nil end
-        if not next(char.ligatures) then char.ligatures = nil end
+        char.kerns, char.ligatures = parse_ligkern(buf, offset, r_boundary, kerns)
       elseif tag == 2 then
         char.next = charinfo & 0xFF
       elseif tag == 3 then
@@ -107,6 +107,12 @@ local function parse_tfm(buf, i, size)
       end
       characters[cc] = char
     end
+  end
+  if nl ~= 0 and string.byte(buf, ligatureoffset + (nl-1) * 4) == 255 then
+    local char = {}
+    characters.left_boundary = char
+    local offset = string.unpack(">H", buf, ligatureoffset + nl * 4 - 2) * 4 + ligatureoffset
+    char.kerns, char.ligatures = parse_ligkern(buf, offset, r_boundary, kerns)
   end
   return {
     checksum = checksum,
