@@ -124,6 +124,36 @@ callback_register('handle_error_hook', function()
 end)
 callback_register('pre_dump', function()
   lua.prepared_code[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())
+  for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
+  -- for i=0,tex.count[19] do -- Sometimes catches reserved language ids which are not used yet
+  -- for i=0,lang.new():id()-1 do -- lang.new():id() is always 0 in luametatex?!?
+    local l = lang.new(i)
+    local str = string.format("do \z
+      local l = lang.new(%i)\z
+      l:hyphenationmin(%i)\z
+      l:prehyphenchar(%i)\z
+      l:posthyphenchar(%i)\z
+      l:preexhyphenchar(%i)\z
+      l:postexhyphenchar(%i)",
+      i,
+      l:hyphenationmin(),
+      l:prehyphenchar(),
+      l:posthyphenchar(),
+      l:preexhyphenchar(),
+      l:postexhyphenchar())
+    local patterns = l:patterns()
+    local exceptions = l:hyphenation()
+    if patterns and exceptions then
+      str = string.format("%sl:patterns(%q)l:hyphenation(%q)end", str, patterns, exceptions)
+    elseif patterns then
+      str = string.format("%sl:patterns(%q)end", str, patterns)
+    elseif exceptions then
+      str = string.format("%sl:hyphenation(%q)end", str, exceptions)
+    else
+      str = str .. 'end'
+    end
+    lua.prepared_code[#lua.prepared_code+1] = str
+  end
   lua.bytecode[1] = assert(load(table.concat(lua.prepared_code, ' ')))
 end)
 function texconfig.init()
