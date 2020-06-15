@@ -16,7 +16,7 @@ local function read_scaled(buf, i, count, factor)
   return result,  i + count * 4
 end
 local function parse_ligkern(buf, offset, r_boundary, kerns)
-  local kerns, ligatures, done = {}, {}, {}
+  local kerning, ligatures, done = {}, {}, {}
   repeat
     local skip, next, op, rem
     skip, next, op, rem, offset = string.unpack("BBBB", buf, offset)
@@ -25,7 +25,7 @@ local function parse_ligkern(buf, offset, r_boundary, kerns)
     if not done[next] then
       done[next] = true
       if op >= 128 then
-        kerns[next] = kerns[(op - 128 << 8) + rem + 1]
+        kerning[next] = kerns[(op - 128 << 8) + rem + 1]
       else
         ligatures[next] = {
           type = op,
@@ -34,7 +34,7 @@ local function parse_ligkern(buf, offset, r_boundary, kerns)
       end
     end
   until skip == 128
-  return next(kerns) and kerns or nil, next(ligatures) and ligatures or nil
+  return next(kerning) and kerning or nil, next(ligatures) and ligatures or nil
 end
 local function parse_tfm(buf, i, size)
   local lf, lh, bc, ec, nw, nh, nd, ni, nl, nk, ne, np
