@@ -244,3 +244,11 @@ token.luacmd("Umathcodenum", function(_, scanning)
   end
 end, "force", "global", "value")
 
+for i=0x30,0x39 do
+  tex.setmathcode(i, 7, 0, i)
+end
+
+for i=0x41,0x5A do
+  tex.setmathcode(i, 7, 1, i)
+  tex.setmathcode(i+0x20, 7, 1, i+0x20)
+end
