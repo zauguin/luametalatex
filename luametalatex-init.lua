@@ -67,9 +67,11 @@ do
     return kpse.find_file(name, 'tex', true)
   end
   if status.ini_version then
+    function unhook_expl()
+      callback_register('find_data_file', normal_find_data_file)
+    end
     callback_register('find_data_file', function(name)
       if name == 'ltexpl.ltx' then
-        callback_register('find_data_file', normal_find_data_file)
         name = 'luametalatex-ltexpl-hook'
       end
       return normal_find_data_file(name)

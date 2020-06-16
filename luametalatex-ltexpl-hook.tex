@@ -1,3 +1,6 @@
+\directlua{unhook_expl()}
 \input luametalatex-baseregisters
-\def\@tfor#1\do#2{}
+\ifx\@tfor\undefined
+  \def\@tfor#1\do#2{}
+\fi
 \input ltexpl.ltx
