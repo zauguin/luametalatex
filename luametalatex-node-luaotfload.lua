@@ -1,4 +1,4 @@
--- Provide enough compatibility function to make luaotfload happy
+-- Provide enough compatibility functions to make luaotfload happy
 
 local properties = node.direct.get_properties_table()
 local flush = node.direct.flush_list
@@ -17,7 +17,7 @@ function node.direct.setcomponents(n, comp)
     properties[n] = props
     return
   end
-  local props_comp = props.components
+  local props_comp = rawget(props, 'components')
   if props_comp then
     props_comp.components = comp -- Important even if nil to avoid double-free
     if not comp then props.components = nil end
