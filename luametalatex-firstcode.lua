@@ -243,15 +243,3 @@ token.luacmd("Umathcodenum", function(_, scanning)
     tex.setmathcodes(char, (mathcode >> 21) & 7, mathcode >> 24, mathcode & 0x1FFFFF)
   end
 end, "force", "global", "value")
-
-if status.ini_version then
-
-  for i=0x30,0x39 do
-    tex.setmathcode(i, 7, 0, i)
-  end
-
-  for i=0x41,0x5A do
-    tex.setmathcode(i, 7, 1, i)
-    tex.setmathcode(i+0x20, 7, 1, i+0x20)
-  end
-end
