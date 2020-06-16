@@ -83,7 +83,7 @@ return function(filename, fontid, reencode)
 
   return function(fontdir, usedcids)
     if reencode and string.unpack(">I4", buf, tables.post[1]) == 0x00020000 then
-      usedcids = readpostnames(buf, tables.post[1] + 32, usedcids, require'parseEnc'(reencode))
+      usedcids = readpostnames(buf, tables.post[1] + 32, usedcids, require'luametalatex-font-enc'(reencode))
     else
       usedcids = table.move(usedcids, 1, #usedcids, 1, {})
     end

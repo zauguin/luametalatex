@@ -457,7 +457,7 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
     if encoding == true then -- Use the built-in encoding
       CharStrings = parse_encoding(buf, i0, top.Encoding, CharStrings)
     elseif encoding then
-      encoding = require'parseEnc'(encoding)
+      encoding = require'luametalatex-font-enc'(encoding)
       local encoded = {}
       for i, n in pairs(encoding) do
         encoded[i] = CharStrings[n]

@@ -42,7 +42,7 @@ return function(filename, reencode)
       reencode = kpse.find_file("8a.enc", "enc files")
     end
     if reencode then
-      parsed_t1.Encoding = require'parseEnc'(reencode)
+      parsed_t1.Encoding = require'luametalatex-font-enc'(reencode)
     end
     -- parsed_t1.Encoding[0] = ".notdef"
     local glyphs = {}
