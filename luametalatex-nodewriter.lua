@@ -135,6 +135,18 @@ local function toglyph(p, fid, x, y, exfactor)
   p.mode = glyph
   p.pending[1] = "[("
 end
+-- Let's start with "handlers" for nodes which do not need any special handling:
+local function ignore_node() end
+-- The following are already handled by the list handler because they only correspond to blank space:
+nodehandler.math = ignore_node
+nodehandler.kern = ignore_node
+-- The following are only for frontend use:
+nodehandler.boundary = ignore_node
+nodehandler.local_par = ignore_node
+nodehandler.penalty = ignore_node
+nodehandler.mark = ignore_node
+
+-- Now we come to more interesting nodes:
 function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
   if outerlist then
     if getid(outerlist) == 0 then
@@ -250,7 +262,6 @@ function nodehandler.rule(p, n, x, y, outer)
   end
 end
 end
-function nodehandler.boundary() end
 function nodehandler.disc(p, n, x, y, list, ...) -- FIXME: I am not sure why this can happen, let's assume we can use .replace
   for n in traverse(getreplace(n)) do
     local next = getnext(n)
@@ -259,8 +270,6 @@ function nodehandler.disc(p, n, x, y, list, ...) -- FIXME: I am not sure why thi
     x = w + x
   end
 end
-function nodehandler.local_par() end
-function nodehandler.math() end
 function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is an interesting one.
   local subtype = getsubtype(n)
   if subtype < 100 then return end -- We only really care about leaders
@@ -334,8 +343,6 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
     end
   end
 end
-function nodehandler.kern() end
-function nodehandler.penalty() end
 
 local pdf_escape = require'luametalatex-pdf-escape'.escape_raw
 local match = lpeg.match
