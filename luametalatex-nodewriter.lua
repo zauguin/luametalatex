@@ -354,14 +354,14 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
       nodehandler[getid(cmd)](p, cmd, x, y, nil, ...)
       x = x + getwidth(cmd)
     elseif cmd[1] == "font" then
-      current_font = fonts[cmd[2]]
+      current_font = assert(fonts[cmd[2]], "invalid font requested")
     elseif cmd[1] == "char" then
       local n = direct.new'glyph'
       setsubtype(n, 256)
       setfont(n, current_font.id, cmd[2])
       nodehandler.glyph(p, n, x, y, outer, ...)
-      direct.free(n)
       x = x + getwidth(n)
+      direct.free(n)
     elseif cmd[1] == "slot" then
       local n = direct.new'glyph'
       setsubtype(n, 256)
@@ -401,10 +401,6 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
     -- else
       -- NOP, comment and invalid commands ignored
     end
-    if #commands ~= 1 then error[[Unsupported command number]] end
-    if commands[1][1] ~= "node" then error[[Unsupported command name]] end
-    commands = commands[1][2]
-    nodehandler[getid(commands)](p, commands, x, y, nil, ...)
   end
 end
 function nodehandler.glyph(p, n, x, y, ...)

@@ -53,14 +53,33 @@ function font.define(f)
   font.fonts[i] = f
   return i
 end
-callback_register('define_font', function(name, size)
+local function base_define_font_cb(name, size)
   local f = read_tfm(name, size)
+  if not f then return end
+  local vf = read_vf(name, size)
+  if vf then
+    local fonts = {}
+    f.fonts = fonts
+    for i, f in next, vf.fonts do
+      if vf.id then
+        fonts[i] = f
+      else
+        fonts[i] = {id = assert(base_define_font_cb(f.name, f.size))}
+      end
+    end
+    f.type = 'virtual'
+    local realchars = f.characters
+    for cp, char in next, vf.characters do
+      assert(realchars[cp]).commands = char.commands
+    end
+  end
   local id = font.define(f)
   if status.ini_version then
     lua.prepared_code[#lua.prepared_code+1] = string.format("assert(%i == font.define(font.read_tfm(%q, %i)))", id, name, size)
   end
   return id
-end)
+end
+callback_register('define_font', base_define_font_cb)
 callback_register('find_log_file', function(name) return name end)
 do
   local function normal_find_data_file(name)
