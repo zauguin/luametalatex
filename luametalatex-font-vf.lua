@@ -9,10 +9,11 @@ local function read_fonts(buf, i, fonts, size)
   if not cmd then return i end
   local fid, check, scale, designsize, arealen, namelen, i =
     string.unpack(cmd, buf, i + 1)
+  fid = fid + 1 -- We prefer 1-based arrays
   local fsize = size * scale >> 20
   if fonts[fid] then error[[font number reused in VF file]] end
   fonts[fid] = {
-    area = string.sub(buf, i, i+arealen-1),
+    area = arealen > 0 and string.sub(buf, i, i+arealen-1) or nil,
     name = string.sub(buf, i+arealen, i+arealen+namelen-1),
     size = fsize,
     designsize = designsize >> 4,
@@ -134,9 +135,9 @@ local function read_chars(buf, i, characters, size)
       if cmd >= 235 then
         cmd, i = string.unpack(Cmds[cmd-234], buf, i + 1)
       else
-        i = i + 1
+        cmd, i = cmd - 171, i + 1
       end
-      commands[#commands + 1] = { "font", cmd }
+      commands[#commands + 1] = { "font", cmd + 1 } -- 1-based fonts
     elseif xxx[cmd] then
       cmd, i = string.unpack(xxx[cmd], buf, i + 1)
       commands[#commands + 1] = { "special", cmd }
@@ -161,16 +162,17 @@ local function parse_vf(buf, i, size)
   i = read_fonts(buf, i, fonts, size)
   i = read_chars(buf, i, characters, size)
 
-  print(require'inspect'(font))
+  return font
 end
 local basename = ((1-lpeg.S'\\/')^0*lpeg.S'\\/')^0*lpeg.C((1-lpeg.P'.tfm'*-1)^0)
 return function(name, size, must_exist)
   local filename = kpse.find_file(name, 'vf', must_exist)
+  if not filename then return end
   local f = io.open(filename)
   if not f then return end
   local buf = f:read'*a'
   f:close()
-  local result = parse_tfm(buf, 1, size)
+  local result = parse_vf(buf, 1, size)
   result.name = basename:match(name)
   return result
 end

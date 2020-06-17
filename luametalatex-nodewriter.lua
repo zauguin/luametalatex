@@ -48,7 +48,6 @@ local function doublekeyed(t, id2name, name2id, index)
 end
 local nodehandler = (function()
   local function unknown_handler(_, n, x, y)
-    print(node.type(10))
     write(format("Sorry, but the PDF backend does not support %q (id = %i) nodes right now. The supplied node will be dropped at coordinates (%i, %i).", node.type(getid(n)), getid(n), x//1, y//1))
   end
   return doublekeyed({}, node.type, node.id, function()
