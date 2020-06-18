@@ -44,7 +44,7 @@ end
 local boolean = (lpeg.P'true' + 'false')/{["true"] = true, ["false"] = false}
 local anytype = {hexstring + literalstring + number + lname + boolean + lpeg.V(2) + name, lpeg.Ct('[' * (white^-1 * lpeg.V(1))^0 * white^-1 * ']' + '{' * (white^-1 * lpeg.V(1))^0 * white^-1 * '}' * white^-1 * lpeg.P"executeonly"^-1)}
 local dict = lpeg.Cf(lpeg.Carg(1) * lpeg.Cg(white^-1*lname*white^-1*(anytype)*white^-1*lpeg.P"readonly"^-1*white^-1*lpeg.P"noaccess"^-1*white^-1*(lpeg.P"def"+"ND"+"|-"))^0, rawset)
-local encoding = (white+anytype-("for"*white))^0*"for"*white/0
+local encoding = (white+anytype-("dup"*white))^0/0
                * lpeg.Cf(lpeg.Ct''
                  * lpeg.Cg("dup"*white*number*white^-1*lname*white^-1*"put"*white)^0
                  , rawset)
