@@ -37,42 +37,17 @@ font.read_tfm = read_tfm
 font.read_vf = read_vf
 local callback_register = callback.register
 require'module'
-font.fonts = {}
-function font.getfont(id)
-  return font.fonts[id]
-end
 pdf = {
   getfontname = function(id) -- No font sharing
     return id
   end,
   variable = {},
 }
-local olddefinefont = font.define
-function font.define(f)
-  local i = olddefinefont(f)
-  font.fonts[i] = f
-  return i
-end
+require'luametalatex-font-resolve' -- Replace font.define
+
 local function base_define_font_cb(name, size)
   local f = read_tfm(name, size)
   if not f then return end
-  local vf = read_vf(name, size)
-  if vf then
-    local fonts = {}
-    f.fonts = fonts
-    for i, f in next, vf.fonts do
-      if vf.id then
-        fonts[i] = f
-      else
-        fonts[i] = {id = assert(base_define_font_cb(f.name, f.size))}
-      end
-    end
-    f.type = 'virtual'
-    local realchars = f.characters
-    for cp, char in next, vf.characters do
-      assert(realchars[cp]).commands = char.commands
-    end
-  end
   local id = font.define(f)
   if status.ini_version then
     lua.prepared_code[#lua.prepared_code+1] = string.format("assert(%i == font.define(font.read_tfm(%q, %i)))", id, name, size)

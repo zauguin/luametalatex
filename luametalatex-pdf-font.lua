@@ -1,5 +1,3 @@
-local mapping = require'luametalatex-pdf-font-map'
-mapping.mapfile(kpse.find_file('pdftex.map', 'map', true))
 local tounicode = {
   [-3] = require'luametalatex-pdf-font-cmap3',
          require'luametalatex-pdf-font-cmap1',
@@ -224,48 +222,7 @@ local function buildfont0(pdf, fontdir, usedcids)
     touni,
     cidfont)
 end
-local fontextensions = {
-  ttf = {"truetype", "truetype fonts",},
-  otf = {"opentype", "opentype fonts",},
-  pfb = {"type1", "type1 fonts",},
-}
-fontextensions.cff = fontextensions.otf
-local fontformats = {
-  fontextensions.pfb, fontextensions.otf, fontextensions.ttf,
-}
 return function(pdf, fontdir, usedcids)
-  if fontdir.encodingbytes == 0 then fontdir.encodingbytes = nil end
-  if fontdir.format == "unknown" or not fontdir.format or fontdir.encodingbytes == 1 then -- TODO: How to check this?
-    fontdir.encodingbytes = fontdir.encodingbytes or 1
-    local mapentry = mapping.fontmap[fontdir.name]
-    if mapentry then
-      local format = mapentry[3] and mapentry[3]:sub(-4, -4) == '.' and fontextensions[mapentry[3]:sub(-3, -1)]
-      if format then
-        fontdir.format = format[1]
-        fontdir.filename = kpse.find_file(mapentry[3], format[2])
-        if mapentry[4] then
-          fontdir.encoding = kpse.find_file(mapentry[4], 'enc files')
-        end
-        goto format_set
-      else
-        for _, format in ipairs(fontformats) do
-          local font = kpse.find_file(mapentry[3],format[2])
-          if font then
-            fontdir.format = "type1"
-            fontdir.filename = font
-            if mapentry[4] then
-              fontdir.encoding = kpse.find_file(mapentry[4], 'enc files')
-            end
-            goto format_set
-          end
-        end
-      end
-    end
-    fontdir.format = "type3"
-    ::format_set::
-  else
-    fontdir.encodingbytes = fontdir.encodingbytes or 2
-  end
   if fontdir.format == "type3" then
     error[[Currently unsupported]] -- TODO
   else

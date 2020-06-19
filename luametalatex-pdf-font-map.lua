@@ -42,7 +42,13 @@ local function mapfile(filename, operator)
   for line in file:lines() do mapline(line, operator) end
   file:close()
 end
+local function reset()
+  for k in next, fontmap do
+    fontmap[k] = nil
+  end
+end
 return {
+  reset = reset,
   mapline = mapline,
   mapfile = mapfile,
   fontmap = fontmap
