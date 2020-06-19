@@ -85,7 +85,7 @@ callback.register("stop_run", function()
     return
   end
   for fid, id in pairs(fontdirs) do
-    local f = font.getfont(fid)
+    local f = font.getfont(fid) or font.fonts[fid]
     local psname = f.psname or f.fullname
     local sorted = {}
     for k,v in pairs(usedglyphs[fid]) do

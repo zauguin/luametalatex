@@ -90,12 +90,25 @@ local function totext(p, fid)
   p.mode = text
   if last == text and p.font.fid == fid then return end
   local f = font.getfont(fid) or font.fonts[fid]
-  if last ~= text then p.strings[#p.strings+1] = "BT" p.pos.lx, p.pos.ly, p.pos.x, p.pos.y, p.font.exfactor = 0, 0, 0, 0, 0 end
+  if last ~= text then p.strings[#p.strings+1] = "BT" p.pos.lx, p.pos.ly, p.pos.x, p.pos.y, p.font.exfactor, p.font.extend, p.font.squeeze, p.font.slant = 0, 0, 0, 0, 0, 1, 1, 0 end
   p:fontprovider(f, fid)
   -- p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", f.parent, sp2bp(f.size)) -- TODO: Setting the mode, expansion, etc.
   p.font.fid = fid
   p.font.font = f
-  return false -- Return true if we need a new textmatrix
+  local need_tm = false
+  if p.font.extend ~= (f.extend or 1000)/1000 then
+    p.font.extend = (f.extend or 1000)/1000
+    need_tm = true
+  end
+  if p.font.squeeze ~= (f.squeeze or 1000)/1000 then
+    p.font.squeeze = (f.squeeze or 1000)/1000
+    need_tm = true
+  end
+  if p.font.slant ~= (f.slant or 0)/1000 then
+    p.font.slant = (f.slant or 0)/1000
+    need_tm = true
+  end
+  return need_tm
 end
 function topage(p)
   local last = p.mode
@@ -117,7 +130,7 @@ local function toglyph(p, fid, x, y, exfactor)
   local last = p.mode
   if last == glyph and p.font.fid == fid and p.pos.y == y and p.font.exfactor == exfactor then
     if x == p.pos.x then return end
-    local xoffset = (x - p.pos.x)/p.font.font.size * 1000 / (1+exfactor/1000000)
+    local xoffset = (x - p.pos.x)/p.font.font.size * 1000 / p.font.extend / (1+exfactor/1000000)
     if math.abs(xoffset) < 1000000 then -- 1000000 is arbitrary
       p.pending[#p.pending+1] = format(")%i(", math.floor(-xoffset))
       p.pos.x = x
@@ -126,9 +139,14 @@ local function toglyph(p, fid, x, y, exfactor)
   end
   if totext(p, fid) or exfactor ~= p.font.exfactor then
     p.font.exfactor = exfactor
-    p.strings[#p.strings+1] = gsub(format("%f 0.0 %f %f %f %f Tm", 1+exfactor/1000000, 0, 1, sp2bp(x), sp2bp(y)), '%.?0+ ', ' ')
+    p.strings[#p.strings+1] = gsub(format("%f 0.0 %f %f %f %f Tm", p.font.extend * (1+exfactor/1000000), p.font.slant, p.font.squeeze, sp2bp(x), sp2bp(y)), '%.?0+ ', ' ')
   else
-    p.strings[#p.strings+1] = gsub(format("%f %f Td", sp2bp((x - p.pos.lx)/(1+exfactor/1000000)), sp2bp(y - p.pos.ly)), '%.?0+ ', ' ')
+    -- To invert the text transformation matrix (extend 0 0;slant squeeze 0;0 0 1)
+    -- we have to apply (extend^-1 0 0;-slant*extend^-1*squeeze^-1 squeeze^-1 0;0 0 1). (extend has to include expansion)
+    -- We optimize slightly by separating some steps
+    local dx, dy = sp2bp((x - p.pos.lx)), sp2bp(y - p.pos.ly) / p.font.squeeze
+    dx = (dx-p.font.slant*dy) / (p.font.extend * (1+exfactor/1000000))
+    p.strings[#p.strings+1] = gsub(format("%f %f Td", dx, dy), '%.?0+ ', ' ')
   end
   p.pos.lx, p.pos.ly, p.pos.x, p.pos.y = x, y, x, y
   p.mode = glyph
@@ -432,12 +450,12 @@ function nodehandler.glyph(p, n, x, y, ...)
       p.pending[#p.pending+1] = pdf_escape(string.pack('>H', index))
     end
     if not p.usedglyphs[index] then
-      p.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size + .5), c.tounicode}
+      p.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
     end
   else
     p.pending[#p.pending+1] = pdf_escape(string.char(getchar(n)))
     if not p.usedglyphs[getchar(n)] then
-      p.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size + .5), c.tounicode}
+      p.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
     end
   end
   p.pos.x = p.pos.x + math.floor(getwidth(n)*(1+getexpansion(n)/1000000)+.5)
