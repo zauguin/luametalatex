@@ -6,108 +6,20 @@ local setwhd = node.direct.setwhd
 local tonode = node.direct.tonode
 local nodewrite = node.write
 
-local box_fallback = {
-  BleedBox = "CropBox",
-  TrimBox  = "CropBox",
-  ArtBox   = "CropBox",
-  CropBox  = "MediaBox",
+-- Mapping extensions to canonical type names if necessary
+local imagetype_map = {
+  -- pdf1 = 'pdf',
 }
-  
-local boxmap = {
-  media = "MediaBox",
-  crop  = "CropBox",
-  bleed = "BleedBox",
-  trim  = "TrimBox",
-  art   = "ArtBox",
-}
+local imagetypes = setmetatable({}, {__index = function(t, k)
+  local remapped = imagetype_map[k]
+  local module = remapped and t[remapped] or require('luametalatex-pdf-image-' .. k)
+  t[k] = module
+  return module
+end})
 
 -- FIXME:
 local function to_sp(bp) return bp*65781.76//1 end
 local function to_bp(sp) return sp/65781.76 end
-
-local function get_box(page, box)
-  box = boxmap[box]
-  while box do
-    local found = pdfe.getbox(page, box)
-    if found then
-      return {to_sp(found[1]), to_sp(found[2]), to_sp(found[3]), to_sp(found[4])}
-    end
-    box = box_fallback[box]
-  end
-end
-
-local function open_pdfe(img)
-  local file = pdfe.open(img.filepath)
-  do
-    local userpassword = img.userpassword
-    local ownerpassword = img.ownerpassword
-    if userpassword or ownerpassword then
-      pdfe.unencrypt(file, userpassword, ownerpassword)
-    end
-  end
-  local status = pdfe.getstatus(file)
-  if status >= 0 then
-    return file
-  elseif status == -1 then
-    error[[PDF image is encrypted. Please provide the decryption key.]]
-  elseif status == -2 then
-    error[[PDF image could not be opened.]]
-  else
-    assert(false)
-  end
-end
-local function scan_pdf(img)
-  local file = open_pdfe(img)
-  img.imagetype = 'pdf'
-  img.pages = pdfe.getnofpages(file)
-  img.page = img.page or 1
-  if img.page > img.pages then
-    error[[Not enough pages in PDF image]]
-  end
-  local page = pdfe.getpage(file, img.page)
-  local bbox = img.bbox or get_box(page, img.pagebox or 'crop') or {0, 0, 0, 0}
-  img.bbox = bbox
-  img.rotation = (360 - (page.Rotate or 0)) % 360
-  assert(img.rotation % 90 == 0, "Invalid /Rotate")
-  img.rotation = img.rotation / 90
-  if img.rotation < 0 then img.rotation = img.rotation + 4 end
-  img.xsize = bbox[3] - bbox[1]
-  img.ysize = bbox[4] - bbox[2]
-end
-
-local pdfe_deepcopy = require'luametalatex-pdfe-deepcopy'
-local function write_pdf(pfile, img)
-  local file = open_pdfe(img)
-  local page = pdfe.getpage(file, img.page)
-  local bbox = img.bbox
-  local dict = string.format("/Subtype/Form/BBox[%f %f %f %f]/Resources %s", bbox[1], bbox[2], bbox[3], bbox[4], pdfe_deepcopy(file, img.filepath, pfile, pdfe.getfromdictionary(page, 'Resources')))
-  local content, raw = page.Contents
-  -- Three cases: Contents is a stream, so copy the stream (Remember to copy filter if necessary)
-  --              Contents is an array of streams, so append all the streams as a new stream
-  --              Contents is missing. Then create an empty stream.
-  local type = pdfe.type(content)
-  if type == 'pdfe.stream' then
-    raw = true
-    for i=1,#content do
-      local key, type, value, detail = pdfe.getfromstream(content, i)
-      dict = dict .. pdfe_deepcopy(file, img.filepath, pfile, 5, key) .. ' ' .. pdfe_deepcopy(file, img.filepath, pfile, type, value, detail)
-    end
-    content = content(false)
-  elseif type == 'pdfe.array' then
-    local array = content
-    content = ''
-    for i=1,#array do
-      content = content .. array[i](true)
-    end
-  else
-    content = ''
-  end
-  local attr = img.attr
-  if attr then
-    dict = dict .. attr
-  end
-  pfile:stream(img.objnum, dict, content, nil, raw)
-end
 
 local liberal_keys = {height = true, width = true, depth = true, transform = true}
 local real_images = {}
@@ -150,9 +62,13 @@ local function scan(img)
     real = real_images[img]
     if real.stream then error[[stream images are not yet supported]] end
     assert(real.filename)
-    if not real.filename:match'%.pdf$' then error[[Currently only PDF images are supported]] end
+    -- TODO: At some point we should just take the lowercased extension
+    local imagetype = real.filename:match'%.pdf$' and 'pdf'
+                   or real.filename:match'%.png$' and 'png'
+                   or error'Unsupported image format'
     real.filepath = assert(kpse.find_file(real.filename), "Image not found")
-    scan_pdf(real)
+    real.imagetype = imagetype
+    imagetypes[imagetype].scan(real)
     setmetatable(img, restricted_meta)
   end
   img.transform = img.transform or 0
@@ -163,13 +79,27 @@ local function scan(img)
   local flipped = (img.transform + real.rotation) % 2 == 1
   if not (img.depth or img.height) then img.depth = 0 end
   if not img.width and not (img.height and img.depth) then
+    local xsize, ysize = real.xsize, real.ysize
+    if not real.bbox then
+      local xres, yres = img.xres, img.yres
+      -- TODO: \pdfvariable Parameters
+      if xres == 0 then
+        xres = 72
+        yres = xres * ((not yres or yres == 0) and 1 or yres)
+      elseif yres == 0 then
+        yres = 72
+        xres = yres * ((not xres or xres == 0) and 1 or xres)
+      end
+      local xscale, yscale = 4736286.72/xres, 4736286.72/yres
+      xsize, ysize = xsize*xscale//1, ysize*yscale//1
+    end
     local total_y
     if flipped then
-      img.width = real.ysize
-      total_y = real.xsize
+      img.width = ysize
+      total_y = xsize
     else
-      img.width = real.xsize
-      total_y = real.ysize
+      img.width = xsize
+      total_y = ysize
     end
     if img.height then
       img.depth = total_y - img.height
@@ -177,7 +107,7 @@ local function scan(img)
       img.height = total_y - img.depth
     end
   else
-    local ratio = flipped and real.xsize / real.ysize or real.ysize / real.xsize
+    local ratio = flipped and xsize / ysize or ysize / xsize
     if img.width then
       if img.depth then
         img.height = (ratio * img.width - img.depth) // 1
@@ -210,7 +140,7 @@ local function write_img(pfile, img)
   local objnum = reserve(pfile, img)
   if not img.written then
     img.written = true
-    write_pdf(pfile, img)
+    imagetypes[img.imagetype].write(pfile, img)
   end
 end
 local function do_img(data, p, n, x, y)
@@ -222,7 +152,13 @@ local function do_img(data, p, n, x, y)
   height = height + depth
   local bbox = img.bbox
   local xsize, ysize = img.xsize, img.ysize
-  local a, b, c, d, e, f = 1, 0, 0, 1, -bbox[1], -bbox[2]
+  local a, b, c, d, e, f = 1, 0, 0, 1
+  if bbox then
+    e, f = -bbox[1], -bbox[2]
+  else
+    e, f = 0, 0
+    xsize, ysize = 65781.76, 65781.76
+  end
   if mirror then
     a, e = -a, -e+xsize
   end

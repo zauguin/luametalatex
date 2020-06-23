@@ -257,6 +257,10 @@ local user_rule = rulesubtypes.user
 local empty_rule = rulesubtypes.empty
 local outline_rule = rulesubtypes.outline
 local ship_img = require'luametalatex-pdf-image'.ship
+-- print(require'inspect'(node.subtypes('glue')))
+-- print(require'inspect'(node.fields('glue')))
+-- print(require'inspect'(node.fields('rule')))
+-- print(require'inspect'(node.fields('whatsit')))
 function nodehandler.rule(p, n, x, y, outer)
   if getwidth(n) == -1073741824 then setwidth(n, getwidth(outer)) end
   if getheight(n) == -1073741824 then setheight(n, getheight(outer)) end
