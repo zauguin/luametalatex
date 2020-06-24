@@ -98,13 +98,44 @@ function parse.pHYs(buf, i, after, ctxt)
   end
   assert(i == after)
 end
+function parse.sRGB(buf, i, after, ctxt)
+  assert(i+1 == after)
+  ctxt.sRGB = buf:char(i)
+end
 function parse.iCCP(buf, i, after, ctxt)
   local j = buf:find('\0', i, true)
   assert(j+1<after)
-  local name = buf:sub(i, j-1)
-  print('ICC Profile name: ' .. name)
+  -- local name = buf:sub(i, j-1)
+  -- print('ICC Profile name: ' .. name)
   assert(buf:byte(j+1) == 0) -- The only known compression mode
-  ctxt.iCCP = xzip.decompress(buf:sub(j+2, after-1))
+  ctxt.iCCP = buf:sub(j+2, after-1)
+  -- ctxt.iCCP = xzip.decompress(buf:sub(j+2, after-1))
+end
+function parse.gAMA(buf, i, after, ctxt)
+  local gamma, i = string.unpack(">I4", buf, i)
+  assert(after == i)
+  ctxt.gAMA = 100000/gamma
+end
+function parse.cHRM(buf, i, after, ctxt)
+  local x_W, y_W, x_R, y_R, x_G, y_G, x_B, y_B, i = string.unpack(">I4I4I4I4I4I4I4I4", buf, i)
+  assert(after == i)
+  x_W, y_W, x_R, y_R, x_G, y_G, x_B, y_B = x_W/100000, y_W/100000, x_R/100000, y_R/100000,
+                                           x_G/100000, y_G/100000, x_B/100000, y_B/100000
+  local z = y_W*((x_G-x_B)*y_R-(x_R-x_B)*y_G+(x_R-x_G)*y_B)
+  z = 1/z
+  local Y_A = y_R*((x_G-x_B)*y_W-(x_W-x_B)*y_G+(x_W-x_G)*y_B) * z
+  local X_A, Z_A = Y_A*x_R/y_R, Y_A*((1-x_R)/y_R-1)
+  local Y_B = -y_G*((x_R-x_B)*y_W-(x_W-x_B)*y_R+(x_W-x_R)*y_B) * z
+  local X_B, Z_B = Y_B*x_G/y_G, Y_B*((1-x_G)/y_G-1)
+  local Y_C = y_B*((x_R-x_G)*y_W-(x_W-x_G)*y_R+(x_W-x_R)*y_G) * z
+  local X_C, Z_C = Y_C*x_B/y_B, Y_C*((1-x_B)/y_B-1)
+
+  local X_W, Y_W, Z_W = X_A+X_B+X_C, Y_A+Y_B+Y_C, Z_A+Z_B+Z_C
+  ctxt.cHRM = string.format("/WhitePoint[%f %f %f]/Matrix[%f %f %f %f %f %f %f %f %f]",
+      X_W, Y_W, Z_W,
+      X_A, Y_A, Z_A,
+      X_B, Y_B, Z_B,
+      X_C, Y_C, Z_C)
 end
 function parse.IDAT(buf, i, after, ctxt)
   ctxt.IDAT = ctxt.IDAT or {}
@@ -186,6 +217,24 @@ function png_functions.scan(img)
   img.colordepth = t.bitdepth
 end
 
+local srgb_colorspace
+local intents = {[0]=
+  '/Intent/Perceptual',
+  '/Intent/RelativeColorimetric',
+  '/Intent/Saturation',
+  '/Intent/AbsoluteColorimetric',
+}
+local function srgb_lookup(pfile, intent)
+  if not srgb_colorspace then
+    local f = io.open(kpse.find_file'sRGB.icc.zlib')
+    local profile = f:read'a'
+    f:close()
+    local objnum = pfile:stream(nil, '/Filter/FlateDecode/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP, nil, true)
+    srgb_colorspace = string.format('[/ICCBased %i 0 R]', objnum)
+  end
+  return objnum, intents[intent] or ''
+end
+
 local pdf_escape = require'luametalatex-pdf-escape'.escape_bytes
 
 local function rawimage(t, content)
@@ -216,15 +265,30 @@ function png_functions.write(pfile, img)
   file:close()
   local t = run(buf, 1, #buf, 'IEND')
   local colorspace
+  local intent = ''
   local colortype = t.colortype
   if img.colorspace then
     colorspace = string.format(' %i 0 R', img.colorspace)
   elseif t.iCCP then
-    local icc_ref = pfile:stream(nil, '/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP)
+    local icc_ref = pfile:stream(nil, '/Filter/FlateDecode/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP, nil, true)
     colorspace = string.format('[/ICCBased %i 0 R]', icc_ref)
+  elseif t.sRGB then
+    colorspace, intent = srgb_lookup(pfile, t.sRGB)
   elseif colortype & 2 == 2 then -- RGB
-    colorspace = '/DeviceRGB'
+    if t.cHRM then
+      local gamma = t.gAMA or 2.2
+      gamma = gamma and string.format("/Gamma[%f %f %f]", gamma, gamma, gamma) or ''
+      colorspace = string.format("[/CalRGB<<%s%s>>]", t.cHRM, gamma)
+    else
+      if t.gAMA then
+        texio.write_nl'Warning: (PNG) Gamma correction without chromaticity information is unsupported. Gamma value will be ignored.'
+      end
+      colorspace = '/DeviceRGB'
+    end
   else -- Gray
+    if t.gAMA or t.cHRM then
+      texio.write_nl'Warning: (PNG) Gamma correction and chromaticity specifications are only supported for RGB images.'
+    end
     colorspace = '/DeviceGray'
   end
   if colortype & 1 == 1 then -- Indexed
