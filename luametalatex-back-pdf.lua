@@ -313,12 +313,12 @@ local function do_restore(prop, p, n, x, y, outer)
   p.matrix = p.matrix[0]
 end
 local function do_dest(prop, p, n, x, y)
-  -- TODO: Apply matrix
   assert(cur_page, "Destinations can not appear outside of a page")
   local id = prop.dest_id
   local dest_type = prop.dest_type
   local data
   if dest_type == "xyz" then
+    local x, y = projected(p.matrix, x, y)
     local zoom = prop.xyz_zoom
     if zoom then
       data = string.format("[%i 0 R/XYZ %.5f %.5f %.3f]", cur_page, sp2bp(x), sp2bp(y), prop.zoom/1000)
@@ -326,18 +326,29 @@ local function do_dest(prop, p, n, x, y)
       data = string.format("[%i 0 R/XYZ %.5f %.5f null]", cur_page, sp2bp(x), sp2bp(y))
     end
   elseif dest_type == "fitr" then
-    data = string.format("[%i 0 R/FitR %.5f %.5f %.5f %.5f]", cur_page, sp2bp(x), sp2bp(y + prop.depth), sp2bp(x + prop.width), sp2bp(y - prop.height))
+    local m = p.matrix
+    local llx, lly = projected(x, x - prop.depth)
+    local lrx, lry = projected(x+prop.width, x - prop.depth)
+    local ulx, uly = projected(x, x + prop.height)
+    local urx, ury = projected(x+prop.width, x + prop.height)
+    local left, lower, right, upper = math.min(llx, lrx, ulx, urx), math.min(lly, lry, uly, ury),
+                                      math.max(llx, lrx, ulx, urx), math.max(lly, lry, uly, ury)
+    data = string.format("[%i 0 R/FitR %.5f %.5f %.5f %.5f]", cur_page, sp2bp(left), sp2bp(lower), sp2bp(right), sp2bp(upper))
   elseif dest_type == "fit" then
     data = string.format("[%i 0 R/Fit]", cur_page)
   elseif dest_type == "fith" then
+    local x, y = projected(p.matrix, x, y)
     data = string.format("[%i 0 R/FitH %.5f]", cur_page, sp2bp(y))
   elseif dest_type == "fitv" then
+    local x, y = projected(p.matrix, x, y)
     data = string.format("[%i 0 R/FitV %.5f]", cur_page, sp2bp(x))
   elseif dest_type == "fitb" then
     data = string.format("[%i 0 R/FitB]", cur_page)
   elseif dest_type == "fitbh" then
+    local x, y = projected(p.matrix, x, y)
     data = string.format("[%i 0 R/FitBH %.5f]", cur_page, sp2bp(y))
   elseif dest_type == "fitbv" then
+    local x, y = projected(p.matrix, x, y)
     data = string.format("[%i 0 R/FitBV %.5f]", cur_page, sp2bp(x))
   end
   if pfile:written(dests[id]) then
