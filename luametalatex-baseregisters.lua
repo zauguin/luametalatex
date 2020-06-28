@@ -37,12 +37,12 @@ local function tex_variable(value, scanner, name, default)
 end
 
 local real_pdf_variables, pdf_variable_names = {}, {'pageresources'}
-local pdf_toks = {}
+local pdf_toks_map = {}
 local pdf_variables = setmetatable(pdf.variable, {
   __index = function(_, k)
     local v = real_pdf_variables[k]
     if v then return v end
-    v = pdf_toks[k]
+    v = pdf_toks_map[k]
     if v then
       return tex.toks[v]
     end
@@ -51,13 +51,42 @@ local pdf_variables = setmetatable(pdf.variable, {
     if real_pdf_variables[k] then
       return set_local(real_pdf_variables, k, v)
     end
-    local toks = pdf_toks[k]
+    local toks = pdf_toks_map[k]
     if toks then
       tex.toks[toks] = v
     end
   end,
 })
 pdf.variable_names = pdf_variable_names
+
+local pdf_toks
+if status.ini_version then
+  local pdf_toks_list = {}
+  function pdf_toks(name, default)
+    pdf_variable_names[#pdf_variable_names+1] = name
+    pdf_toks_list[#pdf_toks_list+1] = {name, default}
+  end
+  function initialize_pdf_toks()
+    for i=1,#pdf_toks_list do
+      local entry = pdf_toks_list[i]
+      local csname = 'pdfvariable  ' .. entry[1]
+      token.set_char(csname, 0) -- Ensure that csname exists
+      local t = token.create(csname)
+      tex.runtoks(function()
+        token.put_next(token.create'newtoks', t)
+      end)
+      pdf_toks_map[entry[1]] = t.index
+      tex.toks[t.index] = entry[2]
+    end
+  end
+else
+  function pdf_toks(name, default)
+    pdf_variable_names[#pdf_variable_names+1] = name
+    local t = token.create('pdfvariable  ' .. name)
+    pdf_toks_map[name] = t.index
+    tex.toks[t.index] = default
+  end
+end
 
 local function pdf_variable(value, scanner, name, default)
   pdf_variable_names[#pdf_variable_names+1] = name
@@ -88,6 +117,8 @@ pdf_variable(count_code, token.scan_int, 'majorversion', 1)
 pdf_variable(count_code, token.scan_int, 'minorversion', 7)
 pdf_variable(count_code, token.scan_int, 'compresslevel', 0)
 pdf_variable(count_code, token.scan_int, 'objcompresslevel', 0) -- 0 is actually the only supported value right now, so this is basically ignored
+
+pdf_toks('pageresources', '')
 
 function tex.getbodydir() return tex.bodydirection end
 function tex.getpagedir() return tex.pagedirection end

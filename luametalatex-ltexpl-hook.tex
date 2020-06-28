@@ -1,6 +1,6 @@
 \directlua{unhook_expl()}
 % See baseregisters for list of toks pdfvariables
-\expandafter\newtoks\csname pdfvariable \space pageresources\endcsname
+\directlua{initialize_pdf_toks()}
 \ifx\@tfor\undefined
   \def\@tfor#1\do#2{}
 \fi
