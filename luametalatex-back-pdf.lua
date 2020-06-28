@@ -143,10 +143,9 @@ callback.register("stop_run", function()
   texio.write_nl(string.format("Transcript written on %s.\n", status.log_name))
 end, "Finish PDF file")
 token.luacmd("pdfvariable", function()
-  for n, t in pairs(pdf.variable_tokens) do
+  for _, n in ipairs(pdf.variable_names) do
     if token.scan_keyword(n) then
-      token.put_next(t)
-      return
+      return token.put_next(token.create('pdfvariable  ' .. n))
     end
   end
   -- The following error message gobbles the next word as a side effect.

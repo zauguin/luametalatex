@@ -11,16 +11,13 @@ function tex.gettextdir() return tex.textdirection end
 function tex.getlinedir() return tex.linedirection end
 function tex.getmathdir() return tex.mathdirection end
 function tex.getpardir()  return tex.pardirection  end
--- local integer_code = value_values.none
 local integer_code = value_values.integer
-local functions = lua.get_functions_table()
-local lua_call_cmd = token.command_id'lua_call'
 local function set_xdir(id, scanning)
-  -- local name = names[id]
-  if scanning then
+  if scanning == 'value' then
+    print(scanning)
     return integer_code, getters[id]()
-    -- return integer_code, tex[name .. 'ection']
   end
+  -- local global = scanning == 'global'
   local value
   if token.scan_keyword'tlt' then
     value = 0
@@ -30,7 +27,6 @@ local function set_xdir(id, scanning)
     value = token.scan_int()
   end
   setters[id](value)
-  -- tex["set" .. name](value)
 end
 return function(name)
   local getter = tex["get" .. name]

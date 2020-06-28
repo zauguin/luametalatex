@@ -1,5 +1,6 @@
 \directlua{unhook_expl()}
-\input luametalatex-baseregisters
+% See baseregisters for list of toks pdfvariables
+\expandafter\newtoks\csname pdfvariable \space pageresources\endcsname
 \ifx\@tfor\undefined
   \def\@tfor#1\do#2{}
 \fi

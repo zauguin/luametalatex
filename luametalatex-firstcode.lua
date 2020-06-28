@@ -12,7 +12,7 @@ local set_lua = token.set_lua
 -- probably doesn't store the function in the array part of the Lua table.
 -- Let's reconsider if this ever becomes a problem.
 -- local new_luafunction = luatexbase.new_luafunction
-local predefined_luafunctions = status.ini_version and 65535 -- 1<<16 - 1 -- We start with 1<<16
+local predefined_luafunctions = status.ini_version and 65536 -- 1<<16  -- We start with 1<<16 + 1 (1<<16=65536 is reserved for luametalatex-local)
 local function new_luafunction(name)
   if predefined_luafunctions then
     predefined_luafunctions = predefined_luafunctions + 1
@@ -221,6 +221,7 @@ else
     -- fixupluafunctions = nil
   -- end
 end
+require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
 require'luametalatex-node-luaotfload'
 

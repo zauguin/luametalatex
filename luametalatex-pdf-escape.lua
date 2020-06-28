@@ -1,4 +1,4 @@
-local mode = 6
+local mode = 0
 -- Control how much escaping is done... the mode is a bitset:
 -- Bit 0: Disable auto-detection of pre-escaped input
 -- Bit 1: Convert UTF-8 input to UTF-16
