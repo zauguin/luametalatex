@@ -77,6 +77,7 @@ end
 local function sp2bp(sp)
   return sp/65781.76
 end
+local fontnames = setmetatable({}, {__index = function(t, k) local res = format("F%i", k) t[k] = res return res end})
 local topage
 local function totext(p, fid)
   local last = p.mode
@@ -91,8 +92,12 @@ local function totext(p, fid)
   if last == text and p.font.fid == fid then return end
   local f = font.getfont(fid) or font.fonts[fid]
   if last ~= text then p.strings[#p.strings+1] = "BT" p.pos.lx, p.pos.ly, p.pos.x, p.pos.y, p.font.exfactor, p.font.extend, p.font.squeeze, p.font.slant = 0, 0, 0, 0, 0, 1, 1, 0 end
-  p:fontprovider(f, fid)
-  -- p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", f.parent, sp2bp(f.size)) -- TODO: Setting the mode, expansion, etc.
+
+  if not f.parent then f.parent = pdf.getfontname(fid) end
+  p.resources.Font[fontnames[f.parent]] = p.fontdirs[f.parent]
+  p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", f.parent, sp2bp(f.size)) -- TODO: Setting the mode, width, etc.
+  p.font.usedglyphs = p.usedglyphs[f.parent]
+
   p.font.fid = fid
   p.font.font = f
   local need_tm = false
@@ -257,6 +262,7 @@ local user_rule = rulesubtypes.user
 local empty_rule = rulesubtypes.empty
 local outline_rule = rulesubtypes.outline
 local ship_img = require'luametalatex-pdf-image'.ship
+local ship_box = require'luametalatex-pdf-savedbox'.ship
 -- print(require'inspect'(node.subtypes('glue')))
 -- print(require'inspect'(node.fields('glue')))
 -- print(require'inspect'(node.fields('rule')))
@@ -266,10 +272,10 @@ function nodehandler.rule(p, n, x, y, outer)
   if getheight(n) == -1073741824 then setheight(n, getheight(outer)) end
   if getdepth(n) == -1073741824 then setdepth(n, getdepth(outer)) end
   local sub = getsubtype(n)
+  if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
   if sub == box_rule then
-    error[[We can't handle boxes yet]]
+    ship_box(getdata(n), p, n, x, y)
   elseif sub == image_rule then
-    if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
     ship_img(getdata(n), p, n, x, y)
   elseif sub == empty_rule then
   elseif sub == user_rule then
@@ -277,7 +283,6 @@ function nodehandler.rule(p, n, x, y, outer)
   elseif sub == outline_rule then
     error[[We can't handle outline rules yet]]
   else
-    if getwidth(n) <= 0 or getdepth(n) + getheight(n) <= 0 then return end
     topage(p)
     p.strings[#p.strings+1] = gsub(format("%f %f %f %f re f", sp2bp(x), sp2bp(y - getdepth(n)), sp2bp(getwidth(n)), sp2bp(getdepth(n) + getheight(n))), '%.?0+ ', ' ')
   end
@@ -453,13 +458,13 @@ function nodehandler.glyph(p, n, x, y, ...)
     else
       p.pending[#p.pending+1] = pdf_escape(string.pack('>H', index))
     end
-    if not p.usedglyphs[index] then
-      p.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
+    if not p.font.usedglyphs[index] then
+      p.font.usedglyphs[index] = {index, math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
     end
   else
     p.pending[#p.pending+1] = pdf_escape(string.char(getchar(n)))
-    if not p.usedglyphs[getchar(n)] then
-      p.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
+    if not p.font.usedglyphs[getchar(n)] then
+      p.font.usedglyphs[getchar(n)] = {getchar(n), math.floor(c.width * 1000 / f.size / p.font.extend + .5), c.tounicode}
     end
   end
   p.pos.x = p.pos.x + math.floor(getwidth(n)*(1+getexpansion(n)/1000000)+.5)
@@ -521,7 +526,7 @@ local ondemandmeta = {
 }
 local function writeresources(p)
   local resources = p.resources
-  local result = {"<<"}
+  local result = {}
   for kind, t in pairs(resources) do if next(t) then
     result[#result+1] = format("/%s<<", kind)
     for name, value in pairs(t) do
@@ -530,11 +535,9 @@ local function writeresources(p)
     end
     result[#result+1] = ">>"
   end end
-  result[#result+1] = ">>"
   return concat(result)
 end
-local fontnames = setmetatable({}, {__index = function(t, k) local res = format("F%i", k) t[k] = res return res end})
-return function(file, n, fontdirs, usedglyphs, colorstacks)
+local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks)
   n = todirect(n)
   setmetatable(usedglyphs, ondemandmeta)
   local p = {
@@ -544,12 +547,6 @@ return function(file, n, fontdirs, usedglyphs, colorstacks)
     strings = {},
     pending = {},
     pos = {},
-    fontprovider = function(p, f, fid)
-      if not f.parent then f.parent = pdf.getfontname(fid) end
-      p.resources.Font[fontnames[f.parent]] = fontdirs[f.parent]
-      p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", f.parent, sp2bp(f.size)) -- TODO: Setting the mode, expansion, etc.
-      p.usedglyphs = usedglyphs[f.parent]
-    end,
     font = {},
     vfont = {},
     matrix = {1, 0, 0, 1, 0, 0},
@@ -557,6 +554,8 @@ return function(file, n, fontdirs, usedglyphs, colorstacks)
     resources = setmetatable({}, ondemandmeta),
     annots = {},
     linkcontext = file.linkcontext,
+    fontdirs = fontdirs,
+    usedglyphs = usedglyphs,
   }
   if colorstacks then
     for i=1, #colorstacks do
@@ -574,3 +573,5 @@ return function(file, n, fontdirs, usedglyphs, colorstacks)
   topage(p)
   return concat(p.strings, '\n'), writeresources(p), (p.annots[1] and string.format("/Annots[%s]", table.concat(p.annots, ' ')) or "")
 end
+require'luametalatex-pdf-savedbox':init_nodewriter(nodewriter)
+return nodewriter

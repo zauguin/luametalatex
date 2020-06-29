@@ -47,11 +47,29 @@ token.luacmd("shipout", function()
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   cur_page = nil
   local content = pfile:stream(nil, '', out)
-  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
+  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s>>%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
   node.flush_list(list)
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
   token.scan_token()
 end, 'force', 'protected')
+
+local savedbox = require'luametalatex-pdf-savedbox'
+local savedbox_save = savedbox.save
+function tex.saveboxresource(n, attr, resources, immediate, type, margin, pfile)
+  if not node.type(n) then
+    n = tonumber(n)
+    if not n then
+      error[[Invalid argument to saveboxresource]]
+    end
+    token.put_next(token.create'box', token.new(n, token.command_id'char_given'))
+    n = token.scan_list()
+  end
+  margin = margin or tex.sp'1bp' -- FIXME: default margin variable
+  return savedbox_save(pfile or get_pfile(), n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
+end
+tex.useboxresource = savedbox.use
+-- TODO: savedbox TeX interface
+
 local infodir = ""
 local namesdir = ""
 local catalogdir = ""
@@ -257,12 +275,16 @@ local function addlinkpoint(p, link, x, y, list, kind)
   end
 end
 local function linkcontext_set(linkcontext, p, x, y, list, level, kind)
+  if not p.is_page then return end
   for _,l in ipairs(linkcontext) do if l.level == level then
       addlinkpoint(p, l, x, y, list, level, kind)
   end end
 end
 
 function do_start_link(prop, p, n, x, y, outer, _, level)
+  if not p.is_page then
+    error[[No link allowed here]]
+  end
   local links = p.linkcontext
   if not links then
     links = {set = linkcontext_set}
@@ -273,10 +295,14 @@ function do_start_link(prop, p, n, x, y, outer, _, level)
   addlinkpoint(p, link, x, y, outer, 'start')
 end
 function do_end_link(prop, p, n, x, y, outer, _, level)
+  if not p.is_page then
+    error[[No link allowed here]]
+  end
   local links = p.linkcontext
   if not links then error"No link here to end" end
   local link = links[#links]
   links[#links] = nil
+  if not links[1] then p.linkcontext = nil end
   if link.level ~= level then error"Wrong link level" end
   addlinkpoint(p, link, x, y, outer, 'final')
 end
@@ -367,9 +393,10 @@ local function do_colorstack(prop, p, n, x, y)
   local stack
   if p.is_page then
     stack = colorstack.page_stack
-  elseif prop.last_form == resources then
+  elseif colorstack.last_form == p.resources then
     stack = colorstack.form_stack
   else
+    colorstack.last_form = p.resources
     stack = {prop.default}
     colorstack.form_stack = stack
   end
