@@ -36,7 +36,7 @@ local function tex_variable(value, scanner, name, default)
   tex_variables[name] = default
 end
 
-local real_pdf_variables, pdf_variable_names = {}, {'pageresources'}
+local real_pdf_variables, pdf_variable_names = {}, {}
 local pdf_toks_map = {}
 local pdf_variables = setmetatable(pdf.variable, {
   __index = function(_, k)
