@@ -119,7 +119,8 @@ callback_register('handle_error_hook', function()
   return 3
 end)
 callback_register('pre_dump', function()
-  lua.prepared_code[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())
+  local prepared = lua.prepared_code
+  prepared[1] = string.format("fixupluafunctions(%i)", fixupluafunctions())
   for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
   -- for i=0,tex.count[19] do -- Sometimes catches reserved language ids which are not used yet
   -- for i=0,lang.new():id()-1 do -- lang.new():id() is always 0 in luametatex?!?
@@ -148,9 +149,14 @@ callback_register('pre_dump', function()
     else
       str = str .. 'end'
     end
-    lua.prepared_code[#lua.prepared_code+1] = str
+    prepared[#prepared+1] = str
   end
-  lua.bytecode[1] = assert(load(table.concat(lua.prepared_code, ' ')))
+  for i=2,#prepared do
+    if type(prepared[i]) ~= 'string' then
+      prepared[i] = assert(prepared[i]())
+    end
+  end
+  lua.bytecode[1] = assert(load(table.concat(prepared, ' ')))
 end)
 function texconfig.init()
   lua.bytecode[2]()
