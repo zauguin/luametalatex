@@ -53,23 +53,6 @@ token.luacmd("shipout", function()
   token.scan_token()
 end, 'force', 'protected')
 
-local savedbox = require'luametalatex-pdf-savedbox'
-local savedbox_save = savedbox.save
-function tex.saveboxresource(n, attr, resources, immediate, type, margin, pfile)
-  if not node.type(n) then
-    n = tonumber(n)
-    if not n then
-      error[[Invalid argument to saveboxresource]]
-    end
-    token.put_next(token.create'box', token.new(n, token.command_id'char_given'))
-    n = token.scan_list()
-  end
-  margin = margin or tex.sp'1bp' -- FIXME: default margin variable
-  return savedbox_save(pfile or get_pfile(), n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
-end
-tex.useboxresource = savedbox.use
--- TODO: savedbox TeX interface
-
 local infodir = ""
 local namesdir = ""
 local catalogdir = ""
@@ -747,4 +730,58 @@ end, "protected", "value")
 
 token.luacmd("lastsavedimageresourcepages", function()
   return integer_code, lastimagepages
+end, "protected", "value")
+
+local savedbox = require'luametalatex-pdf-savedbox'
+local savedbox_save = savedbox.save
+function tex.saveboxresource(n, attr, resources, immediate, type, margin, pfile)
+  if not node.type(n) then
+    n = tonumber(n)
+    if not n then
+      error[[Invalid argument to saveboxresource]]
+    end
+    token.put_next(token.create'box', token.new(n, token.command_id'char_given'))
+    n = token.scan_list()
+  end
+  margin = margin or tex.sp'1bp' -- FIXME: default margin variable
+  return savedbox_save(pfile or get_pfile(), n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
+end
+tex.useboxresource = savedbox.use
+
+local lastbox = -1
+
+token.luacmd("saveboxresource", function(imm)
+  local type
+  if token.scan_keyword'type' then
+    texio.write_nl('XForm type attribute ignored')
+    type = token.scan_int()
+  end
+  local attr = token.scan_keyword'attr' and token.scan_string() or nil
+  local resources = token.scan_keyword'resources' and token.scan_string() or nil
+  local margin = token.scan_keyword'margin' and token.scan_int() or nil -- Why not a dimension?
+  local box = token.scan_int()
+
+  local index = tex.saveboxresource(box, attr, resources, imm == 'immediate', type, margin)
+  lastbox = index
+end, "protected")
+
+token.luacmd("useboxresource", function()
+  local width, height, depth
+  while true do
+    if token.scan_keyword'width' then
+      width = token.scan_dimen()
+    elseif token.scan_keyword'height' then
+      height = token.scan_dimen()
+    elseif token.scan_keyword'depth' then
+      depth = token.scan_dimen()
+    else
+      break
+    end
+  end
+  local index = token.scan_int()
+  node.write((tex.useboxresource(index, width, height, depth)))
+end, "protected")
+
+token.luacmd("lastsavedboxresourceindex", function()
+  return integer_code, lastbox
 end, "protected", "value")
