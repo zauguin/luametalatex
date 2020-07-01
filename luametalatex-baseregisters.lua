@@ -149,9 +149,10 @@ pdf_variable(count_code, token.scan_int, 'forcepagebox', 0, true) -- Considered 
 pdf_variable(count_code, token.scan_int, 'imageresolution', 72, true) -- TODO Also 0 should be the same as 72 ?!?!?!?
 -- The following two relate to pk fonts which we don't support, so they are ignored on a different level
 pdf_variable(count_code, token.scan_int, 'pkresolution', 72)
--- pdf_variable(toks_code, token.scan_string, 'pkmode', '')
+pdf_toks('pkmode', '')
 
-
+pdf_toks('pageattr', '')
+pdf_toks('pagesattr', '')
 pdf_toks('pageresources', '')
 
 function tex.getbodydir() return tex.bodydirection end

@@ -1,6 +1,7 @@
 local min = math.min
 local format = string.format
 local concat = table.concat
+local pdfvariable = pdf.variable
 local function write(pdf, tree, total, max)
   tree = tree or pdf.pages
   if #tree == 0 then 
@@ -22,11 +23,13 @@ local function write(pdf, tree, total, max)
       local parentid = pdf:getobj()
       newtree[-(i//6)] = parentid
       parent = format("/Parent %i 0 R", parentid)
+    elseif #tree <= 6 then
+      parent = pdfvariable.pagesattr
     end
     pdf:indirect(id, format('<</Type/Pages%s/Kids[%s 0 R]/Count %i>>', parent, concat(tree, ' 0 R ', 6*i+1, min(#tree, 6*i+6)), min(remaining, max)))
     remaining = remaining - max
   end
-  if #parent > 0 then
+  if newtree[0] then
     return write(pdf, newtree, total, max*6)
   end
   return newtree[1]

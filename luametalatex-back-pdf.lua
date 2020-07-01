@@ -47,7 +47,7 @@ token.luacmd("shipout", function()
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   cur_page = nil
   local content = pfile:stream(nil, '', out)
-  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s>>%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, annots))
+  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s%s>>%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, pdfvariable.pageresources, annots, pdfvariable.pageattr))
   node.flush_list(list)
   token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
   token.scan_token()
