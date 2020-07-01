@@ -1,0 +1,34 @@
+% To be loaded *after* microtype
+%
+% Patching \pickup@font to emulate LuaTeX's font expansion interface using \adjustspacing...
+\RequirePackage{microtype}% Just to ensure it isn't loaded in the wrong position. Normally this shouldn't be necessary
+\def\luametalatex@@setexpansion#-#1#2#3#-\relax{%
+  \adjustspacingstretch #1
+  \adjustspacingshrink #2
+  \adjustspacingstep #3
+}%
+\newluafunction\luametalatex@@expandglyphsinfont
+\protected\luadef\pdffontexpand\luametalatex@@expandglyphsinfont
+\def\luametalatex@@everyjobandnow#1{\toksapp\everyjob{#1}#1}%
+%
+\begingroup
+\catcode`\!=\catcode`\%
+\catcode`\%=12
+\expanded{!
+  \endgroup
+  \def\noexpand\pickup@font{!
+    \unexpanded\expandafter{\pickup@font
+      \expandafter\expandafter\expandafter\luametalatex@@setexpansion\csname pickup@font@@hook@luametalatex@microtype@\the\fontid\font@name\endcsname{0}{0}{0}\relax
+    }!
+  }!
+  \noexpand\luametalatex@@everyjobandnow{\noexpand\directlua{!
+    lua.get_functions_table()[\the\luametalatex@@expandglyphsinfont] = function()
+      token.put_next(token.create'fontid')
+      local font = token.scan_int()
+      local stretch = token.scan_int()
+      local shrink = token.scan_int()
+      local step = token.scan_int()
+      token.set_macro('pickup@font@@hook@luametalatex@microtype@' .. font, string.format("{}{%i}{%i}{%i}", stretch, shrink, step), "global")
+    end
+  }}
+}%
