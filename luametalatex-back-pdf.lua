@@ -759,7 +759,7 @@ token.luacmd("saveboxresource", function(imm)
   end
   local attr = token.scan_keyword'attr' and token.scan_string() or nil
   local resources = token.scan_keyword'resources' and token.scan_string() or nil
-  local margin = token.scan_keyword'margin' and token.scan_int() or nil -- Why not a dimension?
+  local margin = token.scan_keyword'margin' and token.scan_dimen() or nil
   local box = token.scan_int()
 
   local index = tex.saveboxresource(box, attr, resources, imm == 'immediate', type, margin)
