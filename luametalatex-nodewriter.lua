@@ -498,8 +498,12 @@ function pdf.write_matrix(a, b, c, d, e, f, p)
   pending[1], pending[2], pending[3], pending[4], pending[5], pending[6] = a, b, c, d, e, f
 end
 local write_matrix = pdf.write_matrix
+local literal_type_names = { [0] =
+  'origin', 'page', 'direct', 'raw', 'text'
+}
 function pdf.write(mode, text, x, y, p)
   x, y, p = x or global_x, y or global_y, p or global_p
+  mode = literal_type_names[mode] or mode
   if mode == "page" then
     topage(p)
     p.strings[#p.strings + 1] = text
