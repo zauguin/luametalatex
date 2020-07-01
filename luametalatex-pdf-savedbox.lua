@@ -1,4 +1,5 @@
 local writer -- = require'luametalatex-nodewriter' -- This would introduce some cyclic dependency
+local pdfvariable = pdf.variable
 
 -- XForms currently have the form {width, height, depth, objnum, attributes, list, margin}
 local xforms = {}
@@ -12,6 +13,9 @@ local function shipout(pfile, xform, fontdirs, usedglyphs)
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs)
   cur_page = last_page
   assert(annots == '')
+  if pdfvariable.xformattr ~= '' or pdfvariable.xformresources ~= '' then
+    texio.write_nl('term and log', 'WARNING (savedboxresource shipout): Ignoring unsupported PDF variables xformattr and xformresources. Specify resources and attributes for specific XForms instead.')
+  end
   local dict = string.format('/Subtype/Form/BBox[%f %f %f %f]/Resources<<%s%s>>%s', -to_bp(margin), -to_bp(list.depth+margin), to_bp(list.width+margin), to_bp(list.height+margin), resources, xform.resources or '', xform.attributes or '')
   node.flush_list(list)
   xform.list = nil

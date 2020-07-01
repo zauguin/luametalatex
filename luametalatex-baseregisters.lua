@@ -128,6 +128,7 @@ pdf_variable(dimen_code, token.scan_dimen, 'horigin', tex.sp'1in')
 pdf_variable(dimen_code, token.scan_dimen, 'vorigin', tex.sp'1in')
 pdf_variable(dimen_code, token.scan_dimen, 'linkmargin', tex.sp'0pt')
 pdf_variable(dimen_code, token.scan_dimen, 'destmargin', tex.sp'0pt')
+pdf_variable(dimen_code, token.scan_dimen, 'threadmargin', tex.sp'0pt') -- We don't support threads, so this isn't doing anything
 pdf_variable(count_code, token.scan_int, 'majorversion', 1)
 pdf_variable(count_code, token.scan_int, 'minorversion', 7)
 pdf_variable(count_code, token.scan_int, 'compresslevel', 0)
@@ -154,6 +155,14 @@ pdf_toks('pkmode', '')
 pdf_toks('pageattr', '')
 pdf_toks('pagesattr', '')
 pdf_toks('pageresources', '')
+
+-- The following two are special: The should have force_default=true because we ignore them,
+-- but they are token lists so that doesn't really work. Instead, we check during shipout that
+-- the variables are empty. TODO: Find a nicer solution
+-- The reason for not implementing them is that XForm specific resources and attributes make
+-- much more sense, so these two generic ones are useless and error-prone.
+pdf_toks('xformresources', '')
+pdf_toks('xformattr', '')
 
 function tex.getbodydir() return tex.bodydirection end
 function tex.getpagedir() return tex.pagedirection end
