@@ -63,50 +63,8 @@ end
 --     end
 --   })
 
+local new_whatsit = require'luametalatex-whatsits'.new
 local whatsit_id = node.id'whatsit'
-local whatsits = {
-  [0] = "open",
-        "write",
-        "close",
-        "special",
-        nil,
-        nil,
-        "save_pos",
-        "late_lua",
-        "user_defined",
-        nil,
-        nil,
-        nil,
-        nil,
-        nil,
-        nil,
-        nil,
-        "pdf_literal",
-        "pdf_refobj",
-        "pdf_annot",
-        "pdf_start_link",
-        "pdf_end_link",
-        "pdf_dest",
-        "pdf_action",
-        "pdf_thread",
-        "pdf_start_thread",
-        "pdf_end_thread",
-        "pdf_thread_data",
-        "pdf_link_data",
-        "pdf_colorstack",
-        "pdf_setmatrix",
-        "pdf_save",
-        "pdf_restore",
-}
-whatsits[whatsits[0]] = 0
-for i = 0,#whatsits do
-  local v = whatsits[i]
-  if v then
-    whatsits[v] = i
-  end
-end
-function node.whatsits() return whatsits end
-function node.subtype(s) return type(s) == "string" and whatsits[s] or nil end
 local spacer_cmd, relax_cmd = token.command_id'spacer', token.command_id'relax'
 local function scan_filename()
   local name = {}
@@ -141,15 +99,16 @@ local function do_openout(p)
     end
   end
 end
+local open_whatsit = new_whatsit('open', do_openout)
 token.luacmd("openout", function(_, immediate) -- \openout
   local file = token.scan_int()
   token.scan_keyword'='
   local name = scan_filename()
-  local props = {file = file, name = name, handle = do_openout}
+  local props = {file = file, name = name}
   if immediate == "immediate" then
     do_openout(props)
   else
-    local whatsit = node.direct.new(whatsit_id, whatsits.open)
+    local whatsit = node.direct.new(whatsit_id, open_whatsit)
     properties[whatsit] = props
     node.direct.write(whatsit)
   end
@@ -160,13 +119,14 @@ local function do_closeout(p)
     ofiles[p.file] = nil
   end
 end
+local close_whatsit = new_whatsit('close', do_closeout)
 token.luacmd("closeout", function(_, immediate) -- \closeout
   local file = token.scan_int()
-  local props = {file = file, handle = do_closeout}
+  local props = {file = file}
   if immediate == "immediate" then
     do_closeout(props)
   else
-    local whatsit = node.direct.new(whatsit_id, whatsits.close)
+    local whatsit = node.direct.new(whatsit_id, close_whatsit)
     properties[whatsit] = props
     node.direct.write(whatsit)
   end
@@ -180,14 +140,15 @@ local function do_write(p)
     texio.write_nl(p.file < 0 and "log" or "term and log", content)
   end
 end
+local write_whatsit = new_whatsit('write', do_write)
 token.luacmd("write", function(_, immediate) -- \write
   local file = token.scan_int()
   local content = token.scan_tokenlist()
-  local props = {file = file, data = content, handle = do_write}
+  local props = {file = file, data = content}
   if immediate == "immediate" then
     do_write(props)
   else
-    local whatsit = node.direct.new(whatsit_id, whatsits.write)
+    local whatsit = node.direct.new(whatsit_id, write_whatsit)
     properties[whatsit] = props
     node.direct.write(whatsit)
   end
@@ -199,7 +160,7 @@ token.luacmd("immediate", function() -- \immediate
     return token.put_next(next_tok)
   end
   local function_id = next_tok.mode
-  functions[function_id](function_id, 'immediate')
+  return functions[function_id](function_id, 'immediate')
 end, "protected")
 -- functions[43] = function() -- \pdfvariable
 --   local name = token.scan_string()

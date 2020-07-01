@@ -31,6 +31,8 @@ local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
 local getdata = direct.getdata
 
+local get_whatsit_handler = require'luametalatex-whatsits'.handler
+
 local dir_id = node.id'dir'
 
 local function doublekeyed(t, id2name, name2id, index)
@@ -470,9 +472,9 @@ function nodehandler.glyph(p, n, x, y, ...)
   p.pos.x = p.pos.x + math.floor(getwidth(n)*(1+getexpansion(n)/1000000)+.5)
 end
 function nodehandler.whatsit(p, n, ...) -- Whatsit?
-  local prop = properties[n]-- or node.getproperty(n)
-  if prop and prop.handle then
-    prop:handle(p, n, ...)
+  local handler, prop = get_whatsit_handler(n)
+  if handler then
+    handler(prop, p, n, ...)
   else
     write("Invalid whatsit found (missing handler).")
   end

@@ -98,7 +98,8 @@ callback_register('handle_error_hook', function()
     if line == "" then return 3 end
     local first = line:sub(1,1):upper()
     if first == 'H' then
-      texio.write(tex.gethelptext())
+      texio.write(tex.gethelptext() or "Sorry, I don't know how to help in this situation.\n\z
+        Maybe you should try asking a human?")
     elseif first == 'I' then
       line = line:sub(2)
       tex.runtoks(function()

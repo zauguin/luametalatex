@@ -8,6 +8,7 @@ local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() r
 local usedglyphs = {}
 local dests = {}
 local cur_page
+local declare_whatsit = require'luametalatex-whatsits'.new
 local whatsit_id = node.id'whatsit'
 local whatsits = node.whatsits()
 local colorstacks = {{
@@ -264,9 +265,16 @@ local function linkcontext_set(linkcontext, p, x, y, list, level, kind)
   end end
 end
 
-function do_start_link(prop, p, n, x, y, outer, _, level)
+local start_link_whatsit = declare_whatsit('pdf_start_link', function(prop, p, n, x, y, outer, _, level)
+  if not prop then
+    tex.error('Invalid pdf_start_link whatsit', {"A pdf_start_link whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    return
+  end
   if not p.is_page then
-    error[[No link allowed here]]
+    tex.error('pdf_start_link outside of page', {"PDF links are not allowed in Type3 charstrings or Form XObjects. \z
+        The link will be ignored"})
+    return
   end
   local links = p.linkcontext
   if not links then
@@ -276,29 +284,45 @@ function do_start_link(prop, p, n, x, y, outer, _, level)
   local link = {quads = {}, attr = prop.link_attr, action = prop.action, level = level, force_separate = false} -- force_separate should become an option
   links[#links+1] = link
   addlinkpoint(p, link, x, y, outer, 'start')
-end
-function do_end_link(prop, p, n, x, y, outer, _, level)
+end)
+local end_link_whatsit = declare_whatsit('pdf_end_link', function(prop, p, n, x, y, outer, _, level)
   if not p.is_page then
-    error[[No link allowed here]]
+    tex.error('pdf_start_link outside of page', {"PDF links are not allowed in Type3 charstrings or Form XObjects. \z
+        The link will be ignored"})
+    return
   end
   local links = p.linkcontext
-  if not links then error"No link here to end" end
+  if not links then
+    tex.error('No link here to end', {"You asked me to end a link, but currently there is no link active. \z
+        Maybe you forgot to run \\pdfextension startlink first?"})
+    return
+  end
   local link = links[#links]
+  if link.level ~= level then
+    tex.error('Inconsistent link level', {"You asked me to end a link, but the most recent link had been started at another level. \z
+        I will continue with the link for now."})
+    return
+  end
   links[#links] = nil
   if not links[1] then p.linkcontext = nil end
-  if link.level ~= level then error"Wrong link level" end
   addlinkpoint(p, link, x, y, outer, 'final')
-end
+end)
 
-local do_setmatrix do
+local setmatrix_whatsit do
   local numberpattern = (lpeg.P'-'^-1 * lpeg.R'09'^0 * ('.' * lpeg.R'09'^0)^-1)/tonumber
   local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
-  function do_setmatrix(prop, p, n, x, y, outer)
+  setmatrix_whatsit = declare_whatsit('pdf_setmatrix', function(prop, p, n, x, y, outer)
+    if not prop then
+      tex.error('Invalid pdf_setmatrix whatsit', {"A pdf_setmatrix whatsit did not contain a matrix value. \z
+          Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+      return
+    end
     local m = p.matrix
     local a, b, c, d = matrixpattern:match(prop.data)
     if not a then
-      print(prop.data)
-      error[[No valid matrix found]]
+      tex.error('Invalid matrix', {"The matrix in this pdf_setmatrix whatsit does not have the expected structure and could not be parsed. \z
+          Did you provide enough parameters? The matrix needs exactly four decimal entries."})
+      return
     end
     local e, f = (1-a)*x-c*y, (1-d)*y-b*x -- Emulate that the origin is at x, y for this transformation
                                           -- (We could also first translate by (-x, -y), then apply the matrix
@@ -308,19 +332,23 @@ local do_setmatrix do
     c, d = projected(m, c, d, 0)
     e, f = projected(m, e, f, 1)
     m[1], m[2], m[3], m[4], m[5], m[6] = a, b, c, d, e, f
-  end
+  end)
 end
-local function do_save(prop, p, n, x, y, outer)
+local save_whatsit = declare_whatsit('pdf_save', function(prop, p, n, x, y, outer)
   pdf.write('page', 'q', x, y, p)
   local lastmatrix = p.matrix
   p.matrix = {[0] = lastmatrix, table.unpack(lastmatrix)}
-end
-local function do_restore(prop, p, n, x, y, outer)
+end)
+local restore_whatsit = declare_whatsit('pdf_restore', function(prop, p, n, x, y, outer)
   -- TODO: Check x, y
   pdf.write('page', 'Q', x, y, p)
   p.matrix = p.matrix[0]
-end
-local function do_dest(prop, p, n, x, y)
+end)
+local dest_whatsit = declare_whatsit('pdf_dest', function(prop, p, n, x, y)
+  if not prop then
+    tex.error('Invalid pdf_dest whatsit', {"A pdf_dest whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+  end
   assert(cur_page, "Destinations can not appear outside of a page")
   local id = prop.dest_id
   local dest_type = prop.dest_type
@@ -365,14 +393,29 @@ local function do_dest(prop, p, n, x, y)
   else
     dests[id] = pfile:indirect(dests[id], data)
   end
-end
-local function do_refobj(prop, p, n, x, y)
+end)
+local refobj_whatsit = declare_whatsit('pdf_refobj', function(prop, p, n, x, y)
+  if not prop then
+    tex.error('Invalid pdf_refobj whatsit', {"A pdf_refobj whatsit did not reference any object. \z
+        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    return
+  end
   pfile:reference(prop.obj)
-end
-local function do_literal(prop, p, n, x, y)
+end)
+local literal_whatsit = declare_whatsit('pdf_literal', function(prop, p, n, x, y)
+  if not prop then
+    tex.error('Invalid pdf_literal whatsit', {"A pdf_literal whatsit did not contain a literal to be inserted. \z
+        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    return
+  end
   pdf.write(prop.mode, prop.data, x, y, p)
-end
-local function do_colorstack(prop, p, n, x, y)
+end)
+local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n, x, y)
+  if not prop then
+    tex.error('Invalid pdf_colorstack whatsit', {"A pdf_colorstack whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    return
+  end
   local colorstack = prop.colorstack
   local stack
   if p.is_page then
@@ -393,28 +436,33 @@ local function do_colorstack(prop, p, n, x, y)
     stack[#stack] = prop.data
   end
   pdf.write(colorstack.mode, stack[#stack], x, y, p)
-end
+end)
 local function write_colorstack()
   local idx = token.scan_int()
   local colorstack = colorstacks[idx + 1]
   if not colorstack then
-    error[[Undefined colorstack]]
+    tex.error('Undefined colorstack', {"The requested colorstack is not initialized. \z
+        This probably means that you forgot to run \\pdffeedback colorstackinit or \z
+        that you specified the wrong index. I will continue with colorstack 0."})
+    colorstack = colorstacks[1]
   end
   local action = token.scan_keyword'pop' and 'pop'
               or token.scan_keyword'set' and 'set'
               or token.scan_keyword'current' and 'current'
               or token.scan_keyword'push' and 'push'
   if not action then
-    error[[Missing action specifier for colorstack command]]
+    tex.error('Missing action specifier for colorstack', {
+        "I don't know what you want to do with this colorstack. I would have expected pop/set/current or push here. \z
+        I will ignore this command."})
+    return
   end
   local text
   if action == "push" or "set" then
     text = token.scan_string()
     -- text = token.to_string(token.scan_tokenlist()) -- Attention! This should never be executed in an expand-only context
   end
-  local whatsit = node.new(whatsit_id, whatsits.pdf_colorstack)
+  local whatsit = node.new(whatsit_id, colorstack_whatsit)
   node.setproperty(whatsit, {
-      handle = do_colorstack,
       colorstack = colorstack,
       action = action,
       data = text,
@@ -498,52 +546,40 @@ token.luacmd("pdfextension", function(_, imm)
   elseif token.scan_keyword"literal" then
     local mode = scan_literal_mode()
     local literal = token.scan_string()
-    local whatsit = node.new(whatsit_id, whatsits.pdf_literal)
+    local whatsit = node.new(whatsit_id, literal_whatsit)
     node.setproperty(whatsit, {
-        handle = do_literal,
         mode = mode,
         data = literal,
       })
     node.write(whatsit)
   elseif token.scan_keyword"startlink" then
     local pfile = get_pfile()
-    local whatsit = node.new(whatsit_id, whatsits.pdf_start_link)
+    local whatsit = node.new(whatsit_id, start_link_whatsit)
     local attr = token.scan_keyword'attr' and token.scan_string() or ''
     local action = scan_action()
     local objnum = pfile:getobj()
     lastannot = num
     node.setproperty(whatsit, {
-        handle = do_start_link,
         link_attr = attr,
         action = action,
         objnum = objnum,
       })
     node.write(whatsit)
   elseif token.scan_keyword"endlink" then
-    local whatsit = node.new(whatsit_id, whatsits.pdf_end_link)
-    node.setproperty(whatsit, {
-        handle = do_end_link,
-      })
+    local whatsit = node.new(whatsit_id, end_link_whatsit)
     node.write(whatsit)
   elseif token.scan_keyword"save" then
-    local whatsit = node.new(whatsit_id, whatsits.pdf_save)
-    node.setproperty(whatsit, {
-        handle = do_save,
-      })
+    local whatsit = node.new(whatsit_id, save_whatsit)
     node.write(whatsit)
   elseif token.scan_keyword"setmatrix" then
     local matrix = token.scan_string()
-    local whatsit = node.new(whatsit_id, whatsits.pdf_setmatrix)
+    local whatsit = node.new(whatsit_id, setmatrix_whatsit)
     node.setproperty(whatsit, {
-        handle = do_setmatrix,
         data = matrix,
       })
     node.write(whatsit)
   elseif token.scan_keyword"restore" then
-    local whatsit = node.new(whatsit_id, whatsits.pdf_restore)
-    node.setproperty(whatsit, {
-        handle = do_restore,
-      })
+    local whatsit = node.new(whatsit_id, restore_whatsit)
     node.write(whatsit)
   elseif token.scan_keyword"info" then
     infodir = infodir .. token.scan_string()
@@ -577,10 +613,9 @@ token.luacmd("pdfextension", function(_, imm)
     end
   elseif token.scan_keyword"refobj" then
     local num = token.scan_int()
-    local whatsit = node.new(whatsit_id, whatsits.pdf_refobj)
+    local whatsit = node.new(whatsit_id, refobj_whatsit)
     node.setproperty(whatsit, {
         obj = num,
-        handle = do_refobj,
       })
     node.write(whatsit)
   elseif token.scan_keyword"outline" then
@@ -616,10 +651,9 @@ token.luacmd("pdfextension", function(_, imm)
     else
       error[[Unsupported id type]]
     end
-    local whatsit = node.new(whatsit_id, whatsits.pdf_dest)
+    local whatsit = node.new(whatsit_id, dest_whatsit)
     local prop = {
       dest_id = id,
-      handle = do_dest,
     }
     node.setproperty(whatsit, prop)
     if token.scan_keyword'xyz' then
