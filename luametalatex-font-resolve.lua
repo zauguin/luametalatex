@@ -27,7 +27,7 @@ local special_parser do
   local l = lpeg or require'lpeg'
   local space = l.S' '^0
   local name = (1-l.P' ')^1
-  local reencode = name * space * 'ReEncodeFont'/0
+  local reencode = name * space * 'ReEncodeFont'
   local digit = l.R'09'
   local number = digit^1 * ('.' * digit^0) + '.' * digit^1/tonumber
   local milli_stmt = number * space * ('SlantFont' * l.Cc'slant' + 'ExtendFont' * l.Cc'extend') / function(n, k)
@@ -67,7 +67,6 @@ function font.define(f)
           f.encoding = kpse.find_file(encoding, 'enc files')
         end
         if entry[5] then
-              print(entry[5])
           assert(special_parser:match(entry[5], 1, f))
         end
       else
@@ -82,7 +81,6 @@ function font.define(f)
               f.encoding = kpse.find_file(encoding, 'enc files')
             end
             if entry[5] then
-              print(entry[5])
               assert(special_parser:match(entry[5], 1, f))
             end
             done = true

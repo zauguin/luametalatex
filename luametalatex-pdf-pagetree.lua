@@ -37,8 +37,12 @@ end
 local function newpage(pdf)
   local pages = pdf.pages
   local pagenumber = #pages+1
-  local pageid = pages.reserved and pages.reserved[pagenumber] or pdf:getobj()
-  pages.reserved[pagenumber] = nil
+  local pageid = pages.reserved and pages.reserved[pagenumber]
+  if pageid then
+    pages.reserved[pagenumber] = nil
+  else
+    pageid = pdf:getobj()
+  end
   pages[pagenumber] = pageid
   if 1 == pagenumber % 6 then
     pages[-((pagenumber-1)//6)] = pdf:getobj()
