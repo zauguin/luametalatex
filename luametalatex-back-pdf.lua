@@ -105,7 +105,7 @@ callback.register("stop_run", function()
         destnames[k] = obj .. ' 0 R'
       end
     else
-      texio.write_nl("Warning: Undefined destination %q", tostring(k))
+      texio.write_nl(string.format("Warning: Undefined destination %q", tostring(k)))
     end
   end
   if next(destnames) then
