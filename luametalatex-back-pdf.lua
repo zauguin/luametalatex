@@ -57,6 +57,7 @@ end, 'force', 'protected')
 local infodir = ""
 local namesdir = ""
 local catalogdir = ""
+local catalog_openaction
 local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
 local function write_infodir(p)
   local additional = ""
@@ -117,6 +118,9 @@ callback.register("stop_run", function()
   local pages = #pfile.pages
   if outline then
     catalogdir = string.format("/Outlines %i 0 R%s", outline:write(pfile), catalogdir)
+  end
+  if catalog_openaction then
+    catalogdir = catalogdir .. '/OpenAction' .. catalog_openaction
   end
   pfile:indirect(pfile.root, string.format([[<</Type/Catalog/Version/%s/Pages %i 0 R%s>>]], pfile.version, pfile:writepages(), catalogdir))
   pfile.info = write_infodir(pfile)
@@ -198,19 +202,30 @@ local function get_action_attr(p, action, is_link)
     error[[FIXME]]
   elseif action_type == 1 then -- GoTo
     local id = action.id
-    if file then
-      assert(type(id) == "string")
-      action_attr = action_attr .. "/S/GoToR/D" .. pdf_bytestring(id) .. ">>"
-    else
-      local dest = dests[id]
-      if not dest then
-        dest = pfile:getobj()
-        dests[id] = dest
-      end
-      if type(id) == "string" then
-        action_attr = action_attr .. "/S/GoTo/D" .. pdf_bytestring(id) .. ">>"
+    if id then
+      if file then
+        assert(type(id) == "string")
+        action_attr = action_attr .. "/S/GoToR/D" .. pdf_bytestring(id) .. ">>"
       else
-        action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
+        local dest = dests[id]
+        if not dest then
+          dest = pfile:getobj()
+          dests[id] = dest
+        end
+        if type(id) == "string" then
+          action_attr = action_attr .. "/S/GoTo/D" .. pdf_bytestring(id) .. ">>"
+        else
+          action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
+        end
+      end
+    else
+      id = assert(action.page, 'GoTo action must contain either an id or a page')
+      local tokens = action.tokens
+      if file then
+        action_attr = string.format("%s/S/GoToR/D[%i %s]>>", action_attr, id-1, tokens)
+      else
+        local page_objnum = pfile:reservepage(id)
+        action_attr = string.format("%s/S/GoTo/D[%i 0 R %s]>>", action_attr, page_objnum, tokens)
       end
     end
   end
@@ -486,9 +501,15 @@ local function scan_action()
     file = token.scan_keyword'file' and token.scan_string(),
   }
   if token.scan_keyword'page' then
-    error[[TODO]]
+    assert(action_type == 1)
+    local page = token.scan_int()
+    if page <= 0 then
+      error[[page must be positive in action specified]]
+    end
+    action.page = page
+    action.tokens = token.scan_string()
   elseif token.scan_keyword'num' then
-    if action.file and action_type == 3 then
+    if action.file and action_type == 1 then
       error[[num style GoTo actions must be internal]]
     end
     action.id = token.scan_int()
@@ -585,6 +606,15 @@ token.luacmd("pdfextension", function(_, imm)
     infodir = infodir .. token.scan_string()
   elseif token.scan_keyword"catalog" then
     catalogdir = catalogdir .. ' ' .. token.scan_string()
+    if token.scan_keyword'openaction' then
+      if catalog_openaction then
+        tex.error("Duplicate openaction", {"Only one use of \\pdfextension catalog is allowed to \z
+            have an openaction."})
+      else
+        local action = scan_action()
+        catalog_openaction = get_action_attr(get_pfile(), action)
+      end
+    end
   elseif token.scan_keyword"names" then
     namesdir = namesdir .. ' ' .. token.scan_string()
   elseif token.scan_keyword"obj" then

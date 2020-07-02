@@ -134,6 +134,7 @@ local pdfmeta = {
   indirect = indirect,
   stream = stream,
   newpage = pagetree.newpage,
+  reservepage = pagetree.reservepage,
   writepages = pagetree.write,
   delayed = delay,
   delayedstream = delayedstream,

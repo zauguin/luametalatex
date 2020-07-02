@@ -35,15 +35,31 @@ local function write(pdf, tree, total, max)
   return newtree[1]
 end
 local function newpage(pdf)
-  local pageid = pdf:getobj()
-  local pagenumber = #pdf.pages
-  pdf.pages[pagenumber+1] = pageid
-  if 0 == pagenumber % 6 then
-    pdf.pages[-(pagenumber//6)] = pdf:getobj()
+  local pages = pdf.pages
+  local pagenumber = #pages+1
+  local pageid = pages.reserved and pages.reserved[pagenumber] or pdf:getobj()
+  pages.reserved[pagenumber] = nil
+  pages[pagenumber] = pageid
+  if 1 == pagenumber % 6 then
+    pages[-((pagenumber-1)//6)] = pdf:getobj()
   end
-  return pageid, pdf.pages[-(pagenumber//6)]
+  return pageid, pages[-((pagenumber-1)//6)]
+end
+local function reservepage(pdf, num)
+  local pages = pdf.pages
+  if pages[num] then return pages[num] end
+  local reserved = pages.reserved
+  if reserved then
+    if reserved[num] then return reserved[num] end
+  else
+    reserved = {}
+    pages.reserved = reserved
+  end
+  reserved[num] = pdf:getobj()
+  return reserved[num]
 end
 return {
   write = write,
   newpage = newpage,
+  reservepage = reservepage,
 }
