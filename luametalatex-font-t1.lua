@@ -63,7 +63,7 @@ local function parse_fontinfo(offset, str)
   offset = (white^-1*"end"*white^-1*lpeg.P"readonly"^-1*white^-1*"def"):match(str, offset)
   return found, offset
 end
-local binary_bytes = lpeg.Cmt(number*white^-1*(lpeg.P'-| ' + 'RD '), function(s, p, l)return p+l, s:sub(p, p+l-1) end)*white*(lpeg.P"|-"+"|"+"ND"+"NP")
+local binary_bytes = lpeg.Cmt(number*white^-1*(lpeg.P'-| ' + 'RD '), function(s, p, l)return p+l, s:sub(p, p+l-1) end)*white^-1*(lpeg.P"|-"+"|"+"ND"+"NP")
 local charstr = white^-1*lname*(white^-1*(anytype-lname))^0/0*white^-1
             * lpeg.Cf(lpeg.Ct''
               * lpeg.Cg(lname*white^-1*binary_bytes*white)^0
