@@ -34,6 +34,18 @@ local function get_outline()
   return outline
 end
 local properties = node.direct.properties
+local immediateassignment = token.new(5, token.command_id'convert')
+local global = token.new(0, token.command_id'prefix')
+local deadcycles = token.new(8, token.command_id'set_page_property')
+local zero_tok = token.create(0x30)
+local relax = token.new(0, 0)
+local reset_deadcycles = {
+  immediateassignment,
+  global,
+  deadcycles,
+  zero_tok,
+  relax,
+}
 token.luacmd("shipout", function()
   local pfile = get_pfile()
   local voff = node.new'kern'
@@ -50,7 +62,7 @@ token.luacmd("shipout", function()
   local content = pfile:stream(nil, '', out)
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s%s>>%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, pdfvariable.pageresources, annots, pdfvariable.pageattr))
   node.flush_list(list)
-  token.put_next(token.create'immediateassignment', token.create'global', token.create'deadcycles', token.create(0x30), token.create'relax')
+  token.put_next(reset_deadcycles)
   token.scan_token()
 end, 'force', 'protected')
 
@@ -92,7 +104,7 @@ callback.register("stop_run", function()
     local psname = f.psname or f.fullname
     local sorted = {}
     for k,v in pairs(usedglyphs[fid]) do
-    sorted[#sorted+1] = v
+      sorted[#sorted+1] = v
     end
     table.sort(sorted, function(a,b) return a[1] < b[1] end)
     pfile:indirect(id, require'luametalatex-pdf-font'(pfile, f, sorted))

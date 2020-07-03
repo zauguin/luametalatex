@@ -12,8 +12,7 @@ lua.get_functions_table()[restore_func] = function()
     end
   end
 end
-local lua_call = token.command_id'lua_call'
-local restore_toks = {token.create'atendofgroup', token.new(restore_func, lua_call)}
+local restore_toks = {token.new(2, token.command_id'after_something') , token.new(restore_func, token.command_id'lua_call')} -- \atendofgroup FIXME: Detect mode automatically once token.primitive is fixed
 local put_next = token.put_next
 local runtoks = tex.runtoks
 local function put_restore_toks()
