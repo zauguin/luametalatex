@@ -1,5 +1,6 @@
-local read_tfm = require'luametalatex-font-tfm'
+font.read_tfm = require'luametalatex-font-tfm'
 local read_vf = require'luametalatex-font-vf'
+font.read_vf = read_vf
 local fontmap = require'luametalatex-pdf-font-map'.fontmap
 local callback_find = callback.find
 
