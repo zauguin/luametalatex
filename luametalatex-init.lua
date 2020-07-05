@@ -37,7 +37,8 @@ package.searchers[2] = function(modname)
   return mod, filename
 end
 kpse.set_maketex("fmt", true, "compile")
--- kpse.init_prog("LUATEX", 400, "nexthi", nil)
+kpse.set_maketex("pk", true, "compile")
+kpse.init_prog("LUATEX", 600, "ljfour", nil)
 require'luametalatex-init-config'
 local callback_register = callback.register
 local build_bytecode

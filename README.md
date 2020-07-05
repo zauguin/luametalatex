@@ -6,7 +6,7 @@ This code is in early stages of development and contains more bugs than features
 ## Prerequisites
 You need an up-to-date TeX Live installation and the latest version of LuaMetaTeX.
 
-Additionally a special library version of LuaTeX's kpathsea Lua binding is needed which is provided as a binary for Linux x64. For other platforms you might have to compile it yourself. Drop me a line if you need any instructions.
+Additionally a special library version of LuaTeX's kpathsea Lua binding is needed which is provided as a binary for Linux x64. For other platforms you might have to compile it yourself. Drop me a line if you need any instructions. (The source can be found under https://github.com/zauguin/luametalatex-kpse)
 
 ## How to install (automatically)
 Obtain `luametatex` from ConTeXt, drop the binary into the same location where your `luatex` binary is installed and then run `install.sh`.

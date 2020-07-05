@@ -3,6 +3,7 @@ local pdfvariable = pdf.variable
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
+local build_fontdir = require'luametalatex-pdf-font'
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
@@ -27,9 +28,10 @@ local function get_pfile()
   return pfile
 end
 local outline
+local build_outline = require'luametalatex-pdf-outline'
 local function get_outline()
   if not outline then
-    outline = require'luametalatex-pdf-outline'()
+    outline = build_outline()
   end
   return outline
 end
@@ -107,7 +109,7 @@ callback.register("stop_run", function()
       sorted[#sorted+1] = v
     end
     table.sort(sorted, function(a,b) return a[1] < b[1] end)
-    pfile:indirect(id, require'luametalatex-pdf-font'(pfile, f, sorted))
+    pfile:indirect(id, build_fontdir(pfile, f, sorted))
   end
   pfile.root = pfile:getobj()
   pfile.version = string.format("%i.%i", pdfvariable.majorversion, pdfvariable.minorversion)
@@ -744,7 +746,7 @@ token.luacmd("pdfextension", function(_, imm)
     error(string.format("Unknown PDF extension %s", token.scan_word()))
   end
 end, "protected")
-imglib = require'luametalatex-pdf-image'
+local imglib = require'luametalatex-pdf-image'
 local imglib_node = imglib.node
 local imglib_write = imglib.write
 local imglib_immediatewrite = imglib.immediatewrite
