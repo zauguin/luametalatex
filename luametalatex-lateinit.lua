@@ -5,7 +5,6 @@ if initex then
 end
 
 bit32 = require'luametalatex-bit32' -- Why? And why so early?
--- kpse.init_prog("LUATEX", 400, "nexthi", nil) -- ?
 status.init_kpse = 1 -- Why?
 status.safer_option = 0 -- compat
 status.shell_escape = 0 -- compat -- This is currently a lie.

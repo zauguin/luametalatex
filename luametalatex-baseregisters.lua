@@ -148,8 +148,10 @@ pdf_variable(count_code, token.scan_int, 'uniqueresname', 0, true) -- I add this
 pdf_variable(count_code, token.scan_int, 'pagebox', 2, true) -- TODO (1: media, 2: crop, 3: bleed, 4: trim, 5: art
 pdf_variable(count_code, token.scan_int, 'forcepagebox', 0, true) -- Considered obsolete even in pdfTeX
 pdf_variable(count_code, token.scan_int, 'imageresolution', 72, true) -- TODO Also 0 should be the same as 72 ?!?!?!?
--- The following two relate to pk fonts which we don't support, so they are ignored on a different level
-pdf_variable(count_code, token.scan_int, 'pkresolution', 72)
+
+pdf_variable(count_code, token.scan_int, 'pkresolution', 1200) -- Original default is 72, but that's crazy
+pdf_variable(count_code, token.scan_int, 'pkfixeddpi', 0) -- TODO: Implemented, but even when set to one, font sharing doesn't adapt yet.
+                                                          -- Changing that is complicated because it has to be known pretty early.
 pdf_toks('pkmode', '')
 
 pdf_toks('pageattr', '')

@@ -192,12 +192,12 @@ local function parse_commands(buf, off, t)
   until cmd == 245
   return off
 end
-return function(name)
-  local f = assert(io.open(kpse.find_file(name, 'pk', 600), 'rb')) -- TODO configurable dpi
+return function(filename)
+  local f = assert(io.open(filename, 'rb'))
   local pk = f:read'a'
   f:close()
   local res = {}
-  off = parse_commands(pk, off, res)
+  local off = parse_commands(pk, 1, res)
   -- assert(off == #pk+1) -- TODO: Check that only fillup bytes follow
   return res
 end
