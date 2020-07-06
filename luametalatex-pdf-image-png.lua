@@ -1,3 +1,5 @@
+local strip_floats = require'luametalatex-pdf-utils'.strip_floats
+
 local function ignore() end
 local parse = setmetatable({
   -- IHDR = below,
@@ -131,11 +133,11 @@ function parse.cHRM(buf, i, after, ctxt)
   local X_C, Z_C = Y_C*x_B/y_B, Y_C*((1-x_B)/y_B-1)
 
   local X_W, Y_W, Z_W = X_A+X_B+X_C, Y_A+Y_B+Y_C, Z_A+Z_B+Z_C
-  ctxt.cHRM = string.format("/WhitePoint[%f %f %f]/Matrix[%f %f %f %f %f %f %f %f %f]",
+  ctxt.cHRM = strip_floats(string.format("/WhitePoint[%f %f %f]/Matrix[%f %f %f %f %f %f %f %f %f]",
       X_W, Y_W, Z_W,
       X_A, Y_A, Z_A,
       X_B, Y_B, Z_B,
-      X_C, Y_C, Z_C)
+      X_C, Y_C, Z_C))
 end
 function parse.IDAT(buf, i, after, ctxt)
   ctxt.IDAT = ctxt.IDAT or {}
@@ -277,7 +279,7 @@ function png_functions.write(pfile, img)
   elseif colortype & 2 == 2 then -- RGB
     if t.cHRM then
       local gamma = t.gAMA or 2.2
-      gamma = gamma and string.format("/Gamma[%f %f %f]", gamma, gamma, gamma) or ''
+      gamma = gamma and strip_floats(string.format("/Gamma[%f %f %f]", gamma, gamma, gamma)) or ''
       colorspace = string.format("[/CalRGB<<%s%s>>]", t.cHRM, gamma)
     else
       if t.gAMA then

@@ -17,9 +17,9 @@ local imagetypes = setmetatable({}, {__index = function(t, k)
   return module
 end})
 
--- FIXME:
-local function to_sp(bp) return bp*65781.76//1 end
-local function to_bp(sp) return sp/65781.76 end
+local utils = require'luametalatex-pdf-utils'
+local strip_floats = utils.strip_floats
+local to_bp = utils.to_bp
 
 local liberal_keys = {height = true, width = true, depth = true, transform = true}
 local real_images = {}
@@ -171,7 +171,7 @@ local function do_img(data, p, n, x, y)
   b, d, f = b*yscale, d*yscale, f*yscale
   e, f = to_bp(x + e), to_bp(y - depth + f)
   p.resources.XObject['Im' .. tostring(img.objnum)] = img.objnum
-  pdf.write('page', string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, img.objnum), nil, nil, p)
+  pdf.write('page', strip_floats(string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, img.objnum)), nil, nil, p)
 end
 local ruleid = node.id'rule'
 local ruletypes = node.subtypes'rule'

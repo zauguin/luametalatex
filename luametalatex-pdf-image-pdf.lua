@@ -13,9 +13,10 @@ local boxmap = {
   art   = "ArtBox",
 }
 
--- FIXME:
-local function to_sp(bp) return bp*65781.76//1 end
-local function to_bp(sp) return sp/65781.76 end
+local utils = require'luametalatex-pdf-utils'
+local strip_floats = utils.strip_floats
+local to_sp = utils.to_sp
+local to_bp = utils.to_bp
 
 local function get_box(page, box)
   box = boxmap[box]
@@ -74,7 +75,8 @@ function pdf_functions.write(pfile, img)
   local file = open_pdfe(img)
   local page = pdfe.getpage(file, img.page)
   local bbox = img.bbox
-  local dict = string.format("/Subtype/Form/BBox[%f %f %f %f]/Resources %s", to_bp(bbox[1]), to_bp(bbox[2]), to_bp(bbox[3]), to_bp(bbox[4]), pdfe_deepcopy(file, img.filepath, pfile, pdfe.getfromdictionary(page, 'Resources')))
+  local dict = strip_floats(string.format("/Subtype/Form/BBox[%f %f %f %f]/Resources ", to_bp(bbox[1]), to_bp(bbox[2]), to_bp(bbox[3]), to_bp(bbox[4])))
+  dict = dict .. pdfe_deepcopy(file, img.filepath, pfile, pdfe.getfromdictionary(page, 'Resources'))
   local content, raw = page.Contents
   -- Three cases: Contents is a stream, so copy the stream (Remember to copy filter if necessary)
   --              Contents is an array of streams, so append all the streams as a new stream

@@ -31,6 +31,10 @@ local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
 local getdata = direct.getdata
 
+local utils = require'luametalatex-pdf-utils'
+local strip_floats = utils.strip_floats
+local to_bp = utils.to_bp
+
 local pdf_font_map = require'luametalatex-pdf-font-deduplicate'
 local get_whatsit_handler = require'luametalatex-whatsits'.handler
 
@@ -72,13 +76,10 @@ local whatsithandler = (function()
   end)
 end)()
 local glyph, text, page, cm_pending = 1, 2, 3, 4
-local gsub = string.gsub
+
 local function projected_point(m, x, y, w)
   w = w or 1
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
-end
-local function sp2bp(sp)
-  return sp/65781.76
 end
 local fontnames = setmetatable({}, {__index = function(t, k) local res = format("F%i", k) t[k] = res return res end})
 local topage
@@ -98,7 +99,7 @@ local function totext(p, fid)
 
   local pdf_fid = pdf_font_map[fid]
   p.resources.Font[fontnames[pdf_fid]] = p.fontdirs[pdf_fid]
-  p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", pdf_fid, sp2bp(f.size)) -- TODO: Setting the mode, width, etc.
+  p.strings[#p.strings+1] = strip_floats(format("/F%i %f Tf 0 Tr", pdf_fid, to_bp(f.size))) -- TODO: Setting the mode, width, etc.
   p.font.usedglyphs = p.usedglyphs[pdf_fid]
 
   p.font.fid = fid
@@ -127,7 +128,7 @@ function topage(p)
   elseif last == cm_pending then
     local pending = p.pending_matrix
     if pending[1] ~= 1 or pending[2] ~= 0 or pending[3] ~= 0 or pending[4] ~= 1 or pending[5] ~= 0 or pending[6] ~= 0 then
-      p.strings[#p.strings+1] = format("%f %f %f %f %f %f cm", pending[1], pending[2], pending[3], pending[4], sp2bp(pending[5]), sp2bp(pending[6]))
+      p.strings[#p.strings+1] = strip_floats(format("%f %f %f %f %f %f cm", pending[1], pending[2], pending[3], pending[4], to_bp(pending[5]), to_bp(pending[6])))
     end
   else
     error[[Unknown mode]]
@@ -147,14 +148,14 @@ local function toglyph(p, fid, x, y, exfactor)
   end
   if totext(p, fid) or exfactor ~= p.font.exfactor then
     p.font.exfactor = exfactor
-    p.strings[#p.strings+1] = gsub(format("%f 0.0 %f %f %f %f Tm", p.font.extend * (1+exfactor/1000000), p.font.slant, p.font.squeeze, sp2bp(x), sp2bp(y)), '%.?0+ ', ' ')
+    p.strings[#p.strings+1] = strip_floats(format("%f 0.0 %f %f %f %f Tm", p.font.extend * (1+exfactor/1000000), p.font.slant, p.font.squeeze, to_bp(x), to_bp(y)))
   else
     -- To invert the text transformation matrix (extend 0 0;slant squeeze 0;0 0 1)
     -- we have to apply (extend^-1 0 0;-slant*extend^-1*squeeze^-1 squeeze^-1 0;0 0 1). (extend has to include expansion)
     -- We optimize slightly by separating some steps
-    local dx, dy = sp2bp((x - p.pos.lx)), sp2bp(y - p.pos.ly) / p.font.squeeze
+    local dx, dy = to_bp((x - p.pos.lx)), to_bp(y - p.pos.ly) / p.font.squeeze
     dx = (dx-p.font.slant*dy) / (p.font.extend * (1+exfactor/1000000))
-    p.strings[#p.strings+1] = gsub(format("%f %f Td", dx, dy), '%.?0+ ', ' ')
+    p.strings[#p.strings+1] = strip_floats(format("%f %f Td", dx, dy))
   end
   p.pos.lx, p.pos.ly, p.pos.x, p.pos.y = x, y, x, y
   p.mode = glyph
@@ -287,7 +288,7 @@ function nodehandler.rule(p, n, x, y, outer)
     error[[We can't handle outline rules yet]]
   else
     topage(p)
-    p.strings[#p.strings+1] = gsub(format("%f %f %f %f re f", sp2bp(x), sp2bp(y - getdepth(n)), sp2bp(getwidth(n)), sp2bp(getdepth(n) + getheight(n))), '%.?0+ ', ' ')
+    p.strings[#p.strings+1] = strip_floats(format("%f %f %f %f re f", to_bp(x), to_bp(y - getdepth(n)), to_bp(getwidth(n)), to_bp(getdepth(n) + getheight(n))))
   end
 end
 end

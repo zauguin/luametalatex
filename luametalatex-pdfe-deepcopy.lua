@@ -1,4 +1,5 @@
 local format = string.format
+local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 local pdfe = pdfe
 local l = lpeg
 local regularchar = 1-l.S'\0\t\n\r\f ()<>[]{}/%#'
@@ -17,7 +18,7 @@ local deepcopy_lookup deepcopy_lookup = {
     return format("%d", i)
   end,
   function(_, pdf, f) -- 4: number
-    return format("%f", f)
+    return strip_floats(format("%f", f), "%.?0+[ %]]", "")
   end,
   function(_, pdf, name) -- 5: name
     return nameescape:match(name)

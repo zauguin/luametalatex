@@ -4,7 +4,9 @@ local pdfvariable = pdf.variable
 -- XForms currently have the form {width, height, depth, objnum, attributes, list, margin}
 local xforms = {}
 
-local function to_bp(sp) return sp/65781.76 end
+local utils = require'luametalatex-pdf-utils'
+local strip_floats = utils.strip_floats
+local to_bp = utils.to_bp
 
 local function shipout(pfile, xform, fontdirs, usedglyphs)
   local list, margin = xform.list, xform.margin
@@ -16,7 +18,8 @@ local function shipout(pfile, xform, fontdirs, usedglyphs)
   if pdfvariable.xformattr ~= '' or pdfvariable.xformresources ~= '' then
     texio.write_nl('term and log', 'WARNING (savedboxresource shipout): Ignoring unsupported PDF variables xformattr and xformresources. Specify resources and attributes for specific XForms instead.')
   end
-  local dict = string.format('/Subtype/Form/BBox[%f %f %f %f]/Resources<<%s%s>>%s', -to_bp(margin), -to_bp(list.depth+margin), to_bp(list.width+margin), to_bp(list.height+margin), resources, xform.resources or '', xform.attributes or '')
+  local bbox = strip_floats(string.format('/BBox[%f %f %f %f]', -to_bp(margin), -to_bp(list.depth+margin), to_bp(list.width+margin), to_bp(list.height+margin)))
+  local dict = string.format('/Subtype/Form%s/Resources<<%s%s>>%s', bbox, resources, xform.resources or '', xform.attributes or '')
   node.flush_list(list)
   xform.list = nil
   local objnum = pfile:stream(xform.objnum, dict, out)
@@ -89,10 +92,10 @@ local function do_box(data, p, n, x, y)
   local width, height, depth = node.direct.getwhd(n)
   local xscale, yscale = width / xform.width, (height+depth) / (xform.height+xform.depth)
   p.resources.XObject['Fm' .. tostring(data)] = objnum
-  pdf.write('page', string.format('q %f 0 0 %f %f %f cm /Fm%i Do Q',
+  pdf.write('page', strip_floats(string.format('q %f 0 0 %f %f %f cm /Fm%i Do Q',
     xscale, yscale,
     to_bp(x), to_bp(y-depth+yscale*xform.depth),
-    data), nil, nil, p)
+    data)), nil, nil, p)
 end
 
 return {

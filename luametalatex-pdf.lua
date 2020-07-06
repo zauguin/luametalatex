@@ -1,5 +1,4 @@
 local format = string.format
-local gsub = string.gsub
 local byte = string.byte
 local pack = string.pack
 local error = error

@@ -1,9 +1,15 @@
 local pdf = pdf
 local pdfvariable = pdf.variable
+
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
 local build_fontdir = require'luametalatex-pdf-font'
+
+local utils = require'luametalatex-pdf-utils'
+local strip_floats = utils.strip_floats
+local to_bp = utils.to_bp
+
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local usedglyphs = {}
@@ -62,7 +68,7 @@ token.luacmd("shipout", function()
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   cur_page = nil
   local content = pfile:stream(nil, '', out)
-  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s%s>>%s%s>>]], parent, content, -math.ceil(list.depth/65781.76), math.ceil(list.width/65781.76), math.ceil(list.height/65781.76), resources, pdfvariable.pageresources, annots, pdfvariable.pageattr))
+  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s%s>>%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources, pdfvariable.pageresources, annots, pdfvariable.pageattr))
   node.flush_list(list)
   token.put_next(reset_deadcycles)
   token.scan_token()
@@ -190,9 +196,6 @@ function pdf.newcolorstack(default, mode, page)
   }
   return idx
 end
-local function sp2bp(sp)
-  return sp/65781.76
-end
 local function projected(m, x, y, w)
   w = w or 1
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
@@ -253,14 +256,15 @@ local function write_link(p, link)
   local quadStr = {}
   for i=1,#quads,8 do
     local x1, y1, x4, y4, x2, y2, x3, y3 = table.unpack(quads, i, i+7)
-    x1, y1, x2, y2, x3, y3, x4, y4 = sp2bp(x1), sp2bp(y1), sp2bp(x2), sp2bp(y2), sp2bp(x3), sp2bp(y3), sp2bp(x4), sp2bp(y4)
+    x1, y1, x2, y2, x3, y3, x4, y4 = to_bp(x1), to_bp(y1), to_bp(x2), to_bp(y2), to_bp(x3), to_bp(y3), to_bp(x4), to_bp(y4)
     quadStr[i//8+1] = string.format("%f %f %f %f %f %f %f %f", x1, y1, x2, y2, x3, y3, x4, y4)
     minX = math.min(minX, x1, x2, x3, x4)
     minY = math.min(minY, y1, y2, y3, y4)
     maxX = math.max(maxX, x1, x2, x3, x4)
     maxY = math.max(maxY, y1, y2, y3, y4)
   end
-  pfile:indirect(link.objnum, string.format("<</Type/Annot/Rect[%f %f %f %f]/QuadPoints[%s]%s>>", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' '), attr))
+  local boxes = strip_floats(string.format("/Rect[%f %f %f %f]/QuadPoints[%s]", minX-.2, minY-.2, maxX+.2, maxY+.2, table.concat(quadStr, ' ')))
+  pfile:indirect(link.objnum, string.format("<</Type/Annot%s%s>>", boxes, attr))
   for i=1,#quads do quads[i] = nil end
   link.objnum = nil
 end
@@ -387,9 +391,9 @@ local dest_whatsit = declare_whatsit('pdf_dest', function(prop, p, n, x, y)
     local x, y = projected(p.matrix, x, y)
     local zoom = prop.xyz_zoom
     if zoom then
-      data = string.format("[%i 0 R/XYZ %.5f %.5f %.3f]", cur_page, sp2bp(x-off), sp2bp(y+off), prop.zoom/1000)
+      data = string.format("[%i 0 R/XYZ %.5f %.5f %.3f]", cur_page, to_bp(x-off), to_bp(y+off), prop.zoom/1000)
     else
-      data = string.format("[%i 0 R/XYZ %.5f %.5f null]", cur_page, sp2bp(x-off), sp2bp(y+off))
+      data = string.format("[%i 0 R/XYZ %.5f %.5f null]", cur_page, to_bp(x-off), to_bp(y+off))
     end
   elseif dest_type == "fitr" then
     local m = p.matrix
@@ -399,28 +403,28 @@ local dest_whatsit = declare_whatsit('pdf_dest', function(prop, p, n, x, y)
     local urx, ury = projected(x+prop.width, x + prop.height)
     local left, lower, right, upper = math.min(llx, lrx, ulx, urx), math.min(lly, lry, uly, ury),
                                       math.max(llx, lrx, ulx, urx), math.max(lly, lry, uly, ury)
-    data = string.format("[%i 0 R/FitR %.5f %.5f %.5f %.5f]", cur_page, sp2bp(left-off), sp2bp(lower-off), sp2bp(right+off), sp2bp(upper+off))
+    data = string.format("[%i 0 R/FitR %.5f %.5f %.5f %.5f]", cur_page, to_bp(left-off), to_bp(lower-off), to_bp(right+off), to_bp(upper+off))
   elseif dest_type == "fit" then
     data = string.format("[%i 0 R/Fit]", cur_page)
   elseif dest_type == "fith" then
     local x, y = projected(p.matrix, x, y)
-    data = string.format("[%i 0 R/FitH %.5f]", cur_page, sp2bp(y+off))
+    data = string.format("[%i 0 R/FitH %.5f]", cur_page, to_bp(y+off))
   elseif dest_type == "fitv" then
     local x, y = projected(p.matrix, x, y)
-    data = string.format("[%i 0 R/FitV %.5f]", cur_page, sp2bp(x-off))
+    data = string.format("[%i 0 R/FitV %.5f]", cur_page, to_bp(x-off))
   elseif dest_type == "fitb" then
     data = string.format("[%i 0 R/FitB]", cur_page)
   elseif dest_type == "fitbh" then
     local x, y = projected(p.matrix, x, y)
-    data = string.format("[%i 0 R/FitBH %.5f]", cur_page, sp2bp(y+off))
+    data = string.format("[%i 0 R/FitBH %.5f]", cur_page, to_bp(y+off))
   elseif dest_type == "fitbv" then
     local x, y = projected(p.matrix, x, y)
-    data = string.format("[%i 0 R/FitBV %.5f]", cur_page, sp2bp(x-off))
+    data = string.format("[%i 0 R/FitBV %.5f]", cur_page, to_bp(x-off))
   end
   if pfile:written(dests[id]) then
     texio.write_nl(string.format("Duplicate destination %q", id))
   else
-    dests[id] = pfile:indirect(dests[id], data)
+    dests[id] = pfile:indirect(dests[id], strip_floats(data))
   end
 end)
 local refobj_whatsit = declare_whatsit('pdf_refobj', function(prop, p, n, x, y)
