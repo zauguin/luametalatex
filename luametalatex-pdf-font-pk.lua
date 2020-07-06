@@ -1,4 +1,5 @@
 local read_pk = require'luametalatex-font-pk'
+local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 return function(pdf, fontdir, usedcids)
   local pk = read_pk(fontdir.name)
   local designsize = pk.designsize/1044654.326 -- 1044654.326=2^20*72/72.27 -- designsize in bp
@@ -24,5 +25,5 @@ return function(pdf, fontdir, usedcids)
         glyph.dx/2^16, glyph.dy, left, lower, right, upper, glyph.w, glyph.h, left, lower, glyph.w, glyph.h, glyph.data
     )))
   end
-  return bbox, matrix, '[' .. table.concat(widths, ' ') .. ']', '<<' .. table.concat(charprocs) .. '>>'
+  return bbox, matrix, pdf:indirect(nil, strip_floats('[' .. table.concat(widths, ' ') .. ']')), '<<' .. table.concat(charprocs) .. '>>'
 end

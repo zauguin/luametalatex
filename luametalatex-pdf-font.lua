@@ -1,3 +1,5 @@
+local strip_floats = require'luametalatex-pdf-utils'.strip_floats
+
 local tounicode = {
   [-3] = require'luametalatex-pdf-font-cmap3',
          require'luametalatex-pdf-font-cmap1',
@@ -254,8 +256,8 @@ local function buildfont3(pdf, fontdir, usedcids)
   local enc = cidmap1byte(pdf)
   local bbox, matrix, widths, charprocs = buildfontpk(pdf, fontdir, usedcids) -- TOOD
   local touni = pdf:stream(nil, "", tounicode[1](fontdir, usedcids)) -- Done late to allow for defaults set from the font file
-  return string.format(
-    "<</Type/Font/Subtype/Type3/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths%s/ToUnicode %i 0 R>>",
+  return strip_floats(string.format(
+    "<</Type/Font/Subtype/Type3/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths %i 0 R/ToUnicode %i 0 R>>",
     -- "<</Type/Font/Subtype/Type3/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths[%s]/ToUnicode %i 0 R/FontDescriptor %i 0 R>>",
     bbox[1], bbox[2], bbox[3], bbox[4],
     matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6],
@@ -265,7 +267,7 @@ local function buildfont3(pdf, fontdir, usedcids)
     usedcids[#usedcids][1],
     widths,
     touni
-    ) -- , descriptor) -- TODO
+    )) -- , descriptor) -- TODO
 end
 return function(pdf, fontdir, usedcids)
   if fontdir.format == "type3" then
