@@ -181,7 +181,7 @@ local function buildfont0cff(pdf, fontdir, usedcids)
       if fontdir.format == "type1" then
         cff = require'luametalatex-pdf-font-t1'(fontdir.filename, fontdir.encoding)(fontdir, usedcids)
       elseif fontdir.format == "opentype" then
-        cff = require'luametalatex-pdf-font-cff'(fontdir.filename, fontdir.encodingbytes == 1 and (fontdir.encoding or true))(fontdir, usedcids)
+        cff = require'luametalatex-pdf-font-cff'(fontdir.filename, 1, fontdir.encodingbytes == 1 and (fontdir.encoding or true))(fontdir, usedcids)
       else
         error[[Unsupported format]]
       end

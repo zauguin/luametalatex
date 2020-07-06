@@ -580,7 +580,7 @@ end
 -- local buf = file:read'a'
 -- file:close()
 -- io.open(arg[3], 'w'):write(myfunc(buf, 1, 1, nil, {{3}, {200}, {1000}, {1329}, {1330}, {1331}})):close()
-return function(filename, encoding) return function(fontdir, usedcids)
+return function(filename, fontid, encoding) return function(fontdir, usedcids)
   local file = io.open(filename)
   local buf = file:read'a'
   local i = 1
@@ -589,12 +589,12 @@ return function(filename, encoding) return function(fontdir, usedcids)
   if magic == "ttcf" or magic == "OTTO" then
     -- assert(not encoding) -- nil or false
     encoding = encoding or false
-    local magic, tables = sfnt.parse(buf, 1) -- TODO: Interpret widths etc, they might differ from the CFF ones.
+    local magic, tables = sfnt.parse(buf, fontid) -- TODO: Interpret widths etc, they might differ from the CFF ones.
     assert(magic == "OTTO")
     -- Also CFF2 would be nice to have
     i = tables['CFF '][1]
   end
-  local content, bbox = myfunc(buf, i, 1, usedcids, encoding)
+  local content, bbox = myfunc(buf, i, fontid, usedcids, encoding)
   fontdir.bbox = bbox
   return content
 end end

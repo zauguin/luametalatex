@@ -31,6 +31,7 @@ local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
 local getdata = direct.getdata
 
+local pdf_font_map = require'luametalatex-pdf-font-deduplicate'
 local get_whatsit_handler = require'luametalatex-whatsits'.handler
 
 local dir_id = node.id'dir'
@@ -95,10 +96,10 @@ local function totext(p, fid)
   local f = font.getfont(fid) or font.fonts[fid]
   if last ~= text then p.strings[#p.strings+1] = "BT" p.pos.lx, p.pos.ly, p.pos.x, p.pos.y, p.font.exfactor, p.font.extend, p.font.squeeze, p.font.slant = 0, 0, 0, 0, 0, 1, 1, 0 end
 
-  if not f.parent then f.parent = pdf.getfontname(fid) end
-  p.resources.Font[fontnames[f.parent]] = p.fontdirs[f.parent]
-  p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", f.parent, sp2bp(f.size)) -- TODO: Setting the mode, width, etc.
-  p.font.usedglyphs = p.usedglyphs[f.parent]
+  local pdf_fid = pdf_font_map[fid]
+  p.resources.Font[fontnames[pdf_fid]] = p.fontdirs[pdf_fid]
+  p.strings[#p.strings+1] = format("/F%i %f Tf 0 Tr", pdf_fid, sp2bp(f.size)) -- TODO: Setting the mode, width, etc.
+  p.font.usedglyphs = p.usedglyphs[pdf_fid]
 
   p.font.fid = fid
   p.font.font = f

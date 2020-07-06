@@ -11,9 +11,6 @@ status.safer_option = 0 -- compat
 status.shell_escape = 0 -- compat -- This is currently a lie.
 -- require'module' -- ???
 pdf = {
-  getfontname = function(id) -- No font sharing yet (TODO)
-    return id
-  end,
   variable = {},
 }
 require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before callbacks

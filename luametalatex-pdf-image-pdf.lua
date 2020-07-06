@@ -74,7 +74,7 @@ function pdf_functions.write(pfile, img)
   local file = open_pdfe(img)
   local page = pdfe.getpage(file, img.page)
   local bbox = img.bbox
-  local dict = string.format("/Subtype/Form/BBox[%f %f %f %f]/Resources %s", bbox[1], bbox[2], bbox[3], bbox[4], pdfe_deepcopy(file, img.filepath, pfile, pdfe.getfromdictionary(page, 'Resources')))
+  local dict = string.format("/Subtype/Form/BBox[%f %f %f %f]/Resources %s", to_bp(bbox[1]), to_bp(bbox[2]), to_bp(bbox[3]), to_bp(bbox[4]), pdfe_deepcopy(file, img.filepath, pfile, pdfe.getfromdictionary(page, 'Resources')))
   local content, raw = page.Contents
   -- Three cases: Contents is a stream, so copy the stream (Remember to copy filter if necessary)
   --              Contents is an array of streams, so append all the streams as a new stream
