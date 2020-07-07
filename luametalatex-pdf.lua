@@ -8,6 +8,7 @@ local assigned = {}
 local delayed = {}
 local compress = xzip.compress
 local pdfvariable = pdf.variable
+local do_objstream = true
 -- slightly tricky interface: No/nil return means that the objects content
 -- isn't known yet, while false indicates a delayed object.
 local function written(pdf, num)
@@ -50,20 +51,34 @@ local function delayedstream(pdf, num, dict, content, isfile, raw)
   pdf[-num] = {stream, dict, content, isfile, raw}
   return num
 end
-local function indirect(pdf, num, content, isfile)
+local function indirect(pdf, num, content, isfile, objstream)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
   end
-  pdf[num] = {offset = pdf.file:seek()}
-  pdf.file:write(format('%i 0 obj\n', num))
   if isfile then
     local f = io.open(content)
     content = f:read'a'
     f:close()
   end
-  pdf.file:write(content)
-  pdf.file:write'\nendobj\n'
+  if objstream ~= false and do_objstream then
+    objstream = objstream or true
+    local objstr = pdf.objstream[objstream]
+    if not objstr then
+      objstr = {objnum = pdf:getobj(), off = 0, {}}
+      pdf.objstream[objstream] = objstr
+    end
+    local i = #objstr
+    pdf[num] = {objstr = objstr.objnum, i = i-1}
+    objstr[1][i] = string.format("%i %i ", num, objstr.off)
+    objstr[i+1] = content
+    objstr.off = objstr.off + #content
+  else
+    pdf[num] = {offset = pdf.file:seek()}
+    pdf.file:write(format('%i 0 obj\n', num))
+    pdf.file:write(content)
+    pdf.file:write'\nendobj\n'
+  end
   return num
 end
 local function delay(pdf, num, content, isfile)
@@ -94,25 +109,34 @@ local function getid(pdf)
   return id
 end
 local function trailer(pdf)
+  local linked = 0
+  for k,objstr in next, pdf.objstream do
+    objstr[1] = table.concat(objstr[1])
+    pdf:stream(objstr.objnum, string.format("/Type/ObjStm/N %i/First %i", #objstr-1, #objstr[1]), table.concat(objstr))
+  end
   local nextid = getid(pdf)
   local myoff = pdf.file:seek()
   pdf[nextid] = {offset = myoff}
-  local linked = 0
   local offsets = {}
   for i=1,nextid do
     local off = pdf[i].offset
     if off then
-      offsets[i+1] = pack(">I1I3I1", 1, off, 0)
+      offsets[i+1] = pack(">I1I3I2", 1, off, 0)
     else
-      offsets[linked+1] = pack(">I1I3I1", 0, i, 255)
-      linked = i
+      local objstr = pdf[i].objstr
+      if objstr then
+        offsets[i+1] = pack(">I1I3I2", 2, objstr, pdf[i].i)
+      else
+        offsets[linked+1] = pack(">I1I3I2", 0, i, 255)
+        linked = i
+      end
     end
   end
-  offsets[linked+1] = '\0\0\0\0\255'
+  offsets[linked+1] = '\0\0\0\0\255\255'
   pdf[nextid] = assigned
   -- TODO: Add an /ID according to 14.4
   local info = pdf.info and string.format("/Info %i 0 R", pdf.info) or ""
-  stream(pdf, nextid, format([[/Type/XRef/Size %i/W[1 3 1]/Root %i 0 R%s]], nextid+1, pdf.root, info), table.concat(offsets))
+  stream(pdf, nextid, format([[/Type/XRef/Size %i/W[1 3 2]/Root %i 0 R%s]], nextid+1, pdf.root, info), table.concat(offsets))
   pdf.file:write('startxref\n', myoff, '\n%%EOF')
 end
 local function close(pdf)
@@ -144,7 +168,7 @@ pdfmeta.__index = pdfmeta
 local function open(filename)
   local file = io.open(filename, 'w')
   file:write"%PDF-X.X\n%🖋\n"
-  return setmetatable({file = file, version = '1.7', [0] = 0, pages = {}}, pdfmeta)
+  return setmetatable({file = file, version = '1.7', [0] = 0, pages = {}, objstream = {}}, pdfmeta)
 end
 return {
   open = open,
