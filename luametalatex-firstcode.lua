@@ -23,13 +23,13 @@ local function scan_filename()
     tok = token.scan_token()
     cmd = tok.command
   until cmd ~= spacer_cmd and cmd ~= relax_cmd
-  while (tok.command <= 12 and tok.mode <= token.biggest_char()
+  while (tok.command <= 12 and tok.index <= token.biggest_char()
           or (token.put_next(tok) and false))
-      and (quoted or tok.mode ~= string.byte' ') do
-    if tok.mode == string.byte'"' then
+      and (quoted or tok.index ~= string.byte' ') do
+    if tok.index == string.byte'"' then
       quoted = not quoted
     else
-      name[#name+1] = tok.mode
+      name[#name+1] = tok.index
     end
     tok = token.scan_token()
   end
@@ -109,7 +109,7 @@ token.luacmd("immediate", function() -- \immediate
   if next_tok.command ~= lua_call_cmd then
     return token.put_next(next_tok)
   end
-  local function_id = next_tok.mode
+  local function_id = next_tok.index
   return functions[function_id](function_id, 'immediate')
 end, "protected")
 -- functions[43] = function() -- \pdfvariable

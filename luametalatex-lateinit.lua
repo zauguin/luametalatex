@@ -48,11 +48,11 @@ function token.luacmd(name, func, ...)
   local tok = token.create(name)
   local cmd = tok.command
   if cmd == lua_value_cmd then
-    idx = tok.mode
+    idx = tok.index
   elseif cmd == lua_call_cmd then
-    idx = tok.mode
+    idx = tok.index
   elseif cmd == lua_expandable_call_cmd then
-    idx = tok.mode
+    idx = tok.index
   elseif ... == 'force' then
     idx = new_luafunction(name)
     set_lua(name, idx, select(2, ...))
