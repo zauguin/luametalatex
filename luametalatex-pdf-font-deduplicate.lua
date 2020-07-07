@@ -31,8 +31,12 @@ local fontmap = setmetatable({}, {
   __index = function(t, fid)
     local key = build_sharekey(assert(fonts[fid]))
     local mapped = keymap[key]
-    local share_parent = mapped and t[mapped] or fid
-    t[fid] = share_parent
+    local share_parent
+    if mapped then
+      share_parent = t[mapped]
+    else
+      share_parent, keymap[key], t[fid] = fid, fid, fid
+    end
     return share_parent
   end,
 })
