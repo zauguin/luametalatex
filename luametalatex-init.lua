@@ -23,6 +23,7 @@ do
       end
     end
   end
+  os.arg0 = arg0
   kpse.set_program_name(arg0, progname)
 end
 package.searchers[2] = function(modname)

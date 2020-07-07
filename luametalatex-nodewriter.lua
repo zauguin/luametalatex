@@ -394,9 +394,10 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
       x = x + getwidth(n)
       direct.free(n)
     elseif cmd[1] == "slot" then
+      current_font = assert(fonts[cmd[2]], "invalid font requested")
       local n = direct.new'glyph'
       setsubtype(n, 256)
-      setfont(n, cmd[2], cmd[3])
+      setfont(n, current_font.id, cmd[2])
       nodehandler.glyph(p, n, x, y, outer, ...)
       direct.free(n)
       x = x + getwidth(n)

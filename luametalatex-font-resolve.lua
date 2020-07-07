@@ -5,6 +5,7 @@ local fontmap = require'luametalatex-pdf-font-map'.fontmap
 local callback_find = callback.find
 
 local old_font_define = font.define
+local old_addcharacters = font.addcharacters
 
 require'luametalatex-pdf-font-map'.mapfile(kpse.find_file('pdftex.map', 'map', true))
 
@@ -109,4 +110,58 @@ function font.define(f)
     end
   end
   return id
+end
+
+function font.addcharacters(fid, newdir)
+  old_addcharacters(fid, newdir) -- The easy part, the remaining stuff gets crazy
+  local fontdir = assert(all_fonts[fid], 'addcharacters expects an existing font')
+  local fonts_map
+  if newdir.fonts then -- FIXME: Handle default fonts table
+    if fontdir.fonts then
+      fonts_map = {}
+      for i,f in next, newdir.fonts do
+        if not f.id then
+          f.id = assert(callback_find'define_font'(f.name, f.size or -1000))
+        elseif f.id == 0 then
+          f.id = fid
+        end
+        for j,ff in next, fontdir.fonts do
+          if ff.id == f.id then
+            fonts_map[i] = j
+            goto FONT_MAPPING_SET -- A typical for ... do ... else ... end implemented using goto.
+          end
+        end
+        -- NOT FOUND, so add it
+        local new_f = #fontdir.fonts + 1
+        fontdir.fonts[new_f] = f
+        fonts_map[i] = f
+        ::FONT_MAPPING_SET::
+      end
+    else
+      fontdir.fonts = newdir.fonts
+    end
+  end
+  for cp, glyph in next, newdir do
+    local existing = fontdir[cp]
+    if existing ~= glyph then
+      if existing then
+        texio.write_nl'Overwriting existing character. Here be dragons'
+      end
+    end
+    if glyph.commands then
+      local font_seen
+      for _, cmd in ipairs(glyph.commands) do
+        if cmd[1] == 'font' then
+          font_seen = true
+          cmd[2] = fonts_map[cmd[2]]
+        elseif cmd[1] == 'slot' then
+          font_seen = true
+          cmd[2] = fonts_map[cmd[2]]
+        elseif not font_seen and cmd[1] == 'char' then
+          font_seen = true
+          cmd[1], cmd[2], cmd[3] = 'slot', fonts_map[1], cmd[2]
+        end
+      end
+    end
+  end
 end

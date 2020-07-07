@@ -5,6 +5,7 @@ local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
 local build_fontdir = require'luametalatex-pdf-font'
+local fontmap = require'luametalatex-pdf-font-map'
 
 local utils = require'luametalatex-pdf-utils'
 local strip_floats = utils.strip_floats
@@ -744,6 +745,8 @@ token.luacmd("pdfextension", function(_, imm)
       error[[Unsupported dest type]]
     end
     node.write(whatsit)
+  elseif token.scan_keyword'mapline' then
+    fontmap.mapline(token.scan_string())
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.

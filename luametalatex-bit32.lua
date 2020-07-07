@@ -16,6 +16,6 @@ return {
     return (i ^ j) & mask32
   end,
   extract = function(v, shift, count)
-    return ((bit32 & v) >> shift) & ((1<<count)-1)
+    return ((mask32 & v) >> shift) & ((1<<count)-1)
   end,
 }
