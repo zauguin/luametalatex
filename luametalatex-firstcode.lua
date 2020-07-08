@@ -23,7 +23,7 @@ local function scan_filename()
     tok = token.scan_token()
     cmd = tok.command
   until cmd ~= spacer_cmd and cmd ~= relax_cmd
-  while (tok.command <= 12 and tok.index <= token.biggest_char()
+  while (tok.command <= 12 and tok.command > 0 and tok.command ~= 9 and tok.index <= token.biggest_char()
           or (token.put_next(tok) and false))
       and (quoted or tok.index ~= string.byte' ') do
     if tok.index == string.byte'"' then
@@ -36,13 +36,15 @@ local function scan_filename()
   return utf8.char(table.unpack(name))
 end
 
+local l = lpeg or require'lpeg'
+local add_file_extension = l.Cs((1-('.' * (1-l.S'./\\')^0) * -1)^0 * (l.P(1)^1+l.Cc'.tex'))
 local ofiles = {}
 local function do_openout(p)
   if ofiles[p.file] then
     error[[Existing file]]
   else
     local msg
-    ofiles[p.file], msg = io.open(p.name, 'w')
+    ofiles[p.file], msg = io.open(add_file_extension:match(p.name), 'w')
     if not ofiles[p.file] then
       error(msg)
     end
