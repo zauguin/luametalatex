@@ -35,6 +35,7 @@ local utils = require'luametalatex-pdf-utils'
 local strip_floats = utils.strip_floats
 local to_bp = utils.to_bp
 
+local make_resources = require'luametalatex-pdf-resources'
 local pdf_font_map = require'luametalatex-pdf-font-deduplicate'
 local get_whatsit_handler = require'luametalatex-whatsits'.handler
 
@@ -382,6 +383,8 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
   for _, cmd in ipairs(c.commands) do
     if cmd[1] == "node" then
       local cmd = cmd[2]
+      assert(node.type(cmd))
+      cmd = todirect(cmd)
       nodehandler[getid(cmd)](p, cmd, x, y, nil, ...)
       x = x + getwidth(cmd)
     elseif cmd[1] == "font" then
@@ -397,17 +400,17 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
       current_font = assert(fonts[cmd[2]], "invalid font requested")
       local n = direct.new'glyph'
       setsubtype(n, 256)
-      setfont(n, current_font.id, cmd[2])
+      setfont(n, current_font.id, cmd[3])
       nodehandler.glyph(p, n, x, y, outer, ...)
-      direct.free(n)
       x = x + getwidth(n)
+      direct.free(n)
     elseif cmd[1] == "rule" then
       local n = direct.new'rule'
       setheight(n, cmd[2])
       setwidth(n, cmd[3])
       nodehandler.rule(p, n, x, y, outer, ...)
-      direct.free(n)
       x = x + getwidth(n)
+      direct.free(n)
     elseif cmd[1] == "left" then
       x = x + cmd[2]
     elseif cmd[1] == "down" then
@@ -533,22 +536,9 @@ local ondemandmeta = {
     return t[k]
   end
 }
-local function writeresources(p)
-  local resources = p.resources
-  local result = {}
-  for kind, t in pairs(resources) do if next(t) then
-    result[#result+1] = format("/%s<<", kind)
-    for name, value in pairs(t) do
-      result[#result+1] = format("/%s %i 0 R", name, value)
-      t[name] = nil
-    end
-    result[#result+1] = ">>"
-  end end
-  return concat(result)
-end
-local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks)
+local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks, resources)
   n = todirect(n)
-  setmetatable(usedglyphs, ondemandmeta)
+  resources = resources or make_resources()
   local p = {
     is_page = not not colorstacks,
     file = file,
@@ -560,7 +550,7 @@ local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks)
     vfont = {},
     matrix = {1, 0, 0, 1, 0, 0},
     pending_matrix = {},
-    resources = setmetatable({}, ondemandmeta),
+    resources = resources,
     annots = {},
     linkcontext = file.linkcontext,
     fontdirs = fontdirs,
@@ -580,7 +570,7 @@ local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks)
   nodehandler[getid(n)](p, n, 0, 0, n, nil, 0)
   -- nodehandler[getid(n)](p, n, 0, getdepth(n), n)
   topage(p)
-  return concat(p.strings, '\n'), writeresources(p), (p.annots[1] and string.format("/Annots[%s]", table.concat(p.annots, ' ')) or "")
+  return concat(p.strings, '\n'), resources, (p.annots[1] and string.format("/Annots[%s]", table.concat(p.annots, ' ')) or "")
 end
 require'luametalatex-pdf-savedbox':init_nodewriter(nodewriter)
 return nodewriter

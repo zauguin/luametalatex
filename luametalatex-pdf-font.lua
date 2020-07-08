@@ -250,27 +250,34 @@ local function buildfont0(pdf, fontdir, usedcids)
     cidfont)
 end
 local buildfontpk = require'luametalatex-pdf-font-pk'
+local buildfontnode = require'luametalatex-pdf-font-node'.buildfont
 local function buildfont3(pdf, fontdir, usedcids)
+  local buildfont = fontdir.format == 'type3' and buildfontpk
+                 or fontdir.format == 'type3node' and buildfontnode
+                 or error[[Unsupported Type3 based font format]]
   usedcids = usedcids or allcids(fontdir)
   table.sort(usedcids, function(a,b) return a[1]<b[1] end)
   local enc = cidmap1byte(pdf)
-  local bbox, matrix, widths, charprocs = buildfontpk(pdf, fontdir, usedcids) -- TOOD
+  local bbox, matrix, widths, charprocs = buildfont(pdf, fontdir, usedcids)
   local touni = pdf:stream(nil, "", tounicode[1](fontdir, usedcids)) -- Done late to allow for defaults set from the font file
-  return strip_floats(string.format(
-    "<</Type/Font/Subtype/Type3/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths %i 0 R/ToUnicode %i 0 R>>",
-    -- "<</Type/Font/Subtype/Type3/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths[%s]/ToUnicode %i 0 R/FontDescriptor %i 0 R>>",
+  local matrices = strip_floats(string.format(
+    "/FontBBox[%f %f %f %f]/FontMatrix[%f %f %f %f %f %f]",
     bbox[1], bbox[2], bbox[3], bbox[4],
-    matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6],
+    matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6]))
+  return string.format(
+    "<</Type/Font/Subtype/Type3%s/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths %i 0 R/ToUnicode %i 0 R>>",
+    -- "<</Type/Font/Subtype/Type3/CharProcs%s/Encoding%s/FirstChar %i/LastChar %i/Widths %i 0 R/ToUnicode %i 0 R/FontDescriptor %i 0 R>>",
+    matrices,
     charprocs,
     encodingtype3(pdf),
     usedcids[1][1],
     usedcids[#usedcids][1],
     widths,
     touni
-    )) -- , descriptor) -- TODO
+    ) -- , descriptor) -- TODO
 end
 return function(pdf, fontdir, usedcids)
-  if fontdir.format == "type3" then
+  if fontdir.format:sub(1,5) == "type3" then
     return buildfont3(pdf, fontdir, usedcids)
   else
     return buildfont0(pdf, fontdir, usedcids)

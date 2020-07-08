@@ -5,6 +5,7 @@ local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
 local build_fontdir = require'luametalatex-pdf-font'
+local prepare_node_font = require'luametalatex-pdf-font-node'.prepare
 local fontmap = require'luametalatex-pdf-font-map'
 
 local utils = require'luametalatex-pdf-utils'
@@ -13,7 +14,17 @@ local to_bp = utils.to_bp
 
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
-local usedglyphs = {}
+local nodefont_meta = {}
+local usedglyphs = setmetatable({}, {__index=function(t, fid)
+  local v
+  if font.fonts[fid].format == 'type3node' then
+    v = setmetatable({generation = 0, next_generation = 0}, nodefont_meta)
+  else
+    v = {}
+  end
+  t[fid] = v
+  return v
+end})
 local dests = {}
 local cur_page
 local declare_whatsit = require'luametalatex-whatsits'.new
@@ -69,7 +80,7 @@ token.luacmd("shipout", function()
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   cur_page = nil
   local content = pfile:stream(nil, '', out)
-  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources<<%s%s>>%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources, pdfvariable.pageresources, annots, pdfvariable.pageattr))
+  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources), annots, pdfvariable.pageattr))
   node.flush_list(list)
   token.put_next(reset_deadcycles)
   token.scan_token()
@@ -104,14 +115,36 @@ local pdf_escape = require'luametalatex-pdf-escape'
 local pdf_bytestring = pdf_escape.escape_bytes
 local pdf_text = pdf_escape.escape_text
 
+local function nodefont_newindex(t, k, v)
+  t.generation = t.next_generation
+  return rawset(t, k, v)
+end
+
 callback.register("stop_run", function()
   if not pfile then
     return
   end
+  do
+    nodefont_meta.__newindex = nodefont_newindex -- Start recording generations
+    local need_new_run = true
+    while need_new_run do
+      need_new_run = nil
+      for fid, glyphs in pairs(usedglyphs) do
+        local next_gen = glyphs.next_generation
+        if next_gen and next_gen == glyphs.generation then
+          glyphs.next_generation = next_gen+1
+          need_new_run = true
+          local f = font.getfont(fid) or font.fonts[fid]
+          prepare_node_font(f, glyphs, pfile, fontdirs, usedglyphs) -- Might become fid, glyphs
+        end
+      end
+    end
+  end
   for fid, id in pairs(fontdirs) do
     local f = font.getfont(fid) or font.fonts[fid]
-    local psname = f.psname or f.fullname
     local sorted = {}
+    local used = usedglyphs[fid]
+    used.generation, used.next_generation = nil, nil
     for k,v in pairs(usedglyphs[fid]) do
       sorted[#sorted+1] = v
     end
@@ -438,8 +471,8 @@ local refobj_whatsit = declare_whatsit('pdf_refobj', function(prop, p, n, x, y)
 end)
 local literal_whatsit = declare_whatsit('pdf_literal', function(prop, p, n, x, y)
   if not prop then
-    tex.error('Invalid pdf_literal whatsit', {"A pdf_literal whatsit did not contain a literal to be inserted. \z
-        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_literal whatsit', "A pdf_literal whatsit did not contain a literal to be inserted. \z
+        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
     return
   end
   pdf.write(prop.mode, prop.data, x, y, p)

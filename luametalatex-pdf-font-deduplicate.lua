@@ -17,7 +17,7 @@ local function build_sharekey(fontdir)
   local encodingbytes = assert(fontdir.encodingbytes)
   local key = string.format("%i:%s:", fontdir.encodingbytes, fontdir.format)
   if encodingbytes == 1 then
-    if fontdir.format == "type3" then
+    if fontdir.format:sub(1,5) == "type3" then
       return string.format("%s%i:%s", key, fontdir.size, fontdir.name)
     end
     key = string.format("%s%s:", key, fontdir.encoding or '')

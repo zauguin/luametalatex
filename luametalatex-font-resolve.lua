@@ -55,7 +55,7 @@ function font.define(f)
   local format = f.format or "unknown"
   local encodingbytes = f.encodingbytes or (f.format:sub(5) == "type" and 2 or 1)
   f.encodingbytes = encodingbytes
-  if encodingbytes == 1 and f.type ~= 'virtual' then
+  if encodingbytes == 1 and f.type ~= 'virtual' and f.format ~= 'type3node' then
     -- map file lookup
     local entry = fontmap[f.name]
     if entry then
@@ -145,7 +145,7 @@ function font.addcharacters(fid, newdir)
     local existing = fontdir[cp]
     if existing ~= glyph then
       if existing then
-        texio.write_nl'Overwriting existing character. Here be dragons'
+        -- texio.write_nl'Overwriting existing character. Here be dragons'
       end
     end
     if glyph.commands then

@@ -19,7 +19,7 @@ local function shipout(pfile, xform, fontdirs, usedglyphs)
     texio.write_nl('term and log', 'WARNING (savedboxresource shipout): Ignoring unsupported PDF variables xformattr and xformresources. Specify resources and attributes for specific XForms instead.')
   end
   local bbox = strip_floats(string.format('/BBox[%f %f %f %f]', -to_bp(margin), -to_bp(list.depth+margin), to_bp(list.width+margin), to_bp(list.height+margin)))
-  local dict = string.format('/Subtype/Form%s/Resources<<%s%s>>%s', bbox, resources, xform.resources or '', xform.attributes or '')
+  local dict = string.format('/Subtype/Form%s/Resources%s%s', bbox, resources(xform.resources), xform.attributes or '')
   node.flush_list(list)
   xform.list = nil
   local objnum = pfile:stream(xform.objnum, dict, out)
