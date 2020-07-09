@@ -131,9 +131,9 @@ pdf_variable(dimen_code, token.scan_dimen, 'destmargin', tex.sp'0pt')
 pdf_variable(dimen_code, token.scan_dimen, 'threadmargin', tex.sp'0pt') -- We don't support threads, so this isn't doing anything
 pdf_variable(count_code, token.scan_int, 'majorversion', 1)
 pdf_variable(count_code, token.scan_int, 'minorversion', 7)
-pdf_variable(count_code, token.scan_int, 'compresslevel', 0)
+pdf_variable(count_code, token.scan_int, 'compresslevel', 9)
+pdf_variable(count_code, token.scan_int, 'objcompresslevel', 3)
 
-pdf_variable(count_code, token.scan_int, 'objcompresslevel', 0, true) -- TODO ... not particularly urgent
 pdf_variable(count_code, token.scan_int, 'decimaldigits', 4, true) -- Will probably stay fixed, but should be more consistent
 pdf_variable(count_code, token.scan_int, 'gentounicode', 0, true) -- We expect the fontloader to generade tounicode tables. Might change at some point
 -- These two are ignored, but that is consistent with pdfTeX as long as imageapplygamma is 0:

@@ -8,7 +8,6 @@ local assigned = {}
 local delayed = {}
 local compress = xzip.compress
 local pdfvariable = pdf.variable
-local do_objstream = true
 -- slightly tricky interface: No/nil return means that the objects content
 -- isn't known yet, while false indicates a delayed object.
 local function written(pdf, num)
@@ -61,7 +60,7 @@ local function indirect(pdf, num, content, isfile, objstream)
     content = f:read'a'
     f:close()
   end
-  if objstream ~= false and do_objstream then
+  if objstream ~= false and pdfvariable.objcompresslevel ~= 0 then
     objstream = objstream or true
     local objstr = pdf.objstream[objstream]
     if not objstr then
