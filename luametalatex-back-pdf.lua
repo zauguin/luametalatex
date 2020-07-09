@@ -68,13 +68,17 @@ local reset_deadcycles = {
 }
 token.luacmd("shipout", function()
   local pfile = get_pfile()
+  local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
   local voff = node.new'kern'
-  voff.kern = tex.voffset + pdfvariable.vorigin
+  voff.kern = total_voffset
   voff.next = token.scan_list()
-  voff.next.shift = tex.hoffset + pdfvariable.horigin
+  voff.next.shift = total_hoffset
   local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
-  list.height = tex.pageheight
-  list.width = tex.pagewidth
+  local pageheight, pagewidth = tex.pageheight, tex.pagewidth
+  -- In the following, the total_[hv]offset represents a symmetric offset applied on the right/bottom.
+  -- The upper/left one is already included in the box dimensions
+  list.height = pageheight ~= 0 and pageheight or list.height + list.depth + total_voffset
+  list.width = pagewidth ~= 0 and pagewidth or list.width + total_hoffset
   local page, parent = pfile:newpage()
   cur_page = page
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)

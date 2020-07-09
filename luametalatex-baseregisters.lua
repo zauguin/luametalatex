@@ -117,9 +117,9 @@ end
 
 tex_variable(count_code, token.scan_int, 'suppressfontnotfounderror', 0)
 tex_variable(count_code, token.scan_int, 'outputmode', 1) -- The "traditional" default would be 0,
-                                                            -- but we do not actually support that.
-tex_variable(dimen_code, token.scan_dimen, 'pageheight', tex.sp'297mm')
-tex_variable(dimen_code, token.scan_dimen, 'pagewidth', tex.sp'210mm')
+                                                          -- but we do not actually support that.
+tex_variable(dimen_code, token.scan_dimen, 'pageheight', 0)
+tex_variable(dimen_code, token.scan_dimen, 'pagewidth', 0)
 
 tex_variable(count_code, token.scan_int, 'bodydirection', 0)
 tex_variable(count_code, token.scan_int, 'pagedirection', 0)
