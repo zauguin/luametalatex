@@ -1,6 +1,6 @@
 do
   local ourpath = lua.startupfile:match('(.*[/\\])[^/\\]*%.lua$')
-  kpse = assert(package.loadlib(ourpath .. 'kpse.so', 'luaopen_kpse'))()
+  kpse = assert(package.loadlib(ourpath .. 'kpse.' .. (os.type == 'windows' and 'dll' or 'so'), 'luaopen_kpse'))()
 end
 local interaction
 do
