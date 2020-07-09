@@ -38,7 +38,7 @@ local function mapfile(filename, operator)
   if not operator then
     operator, filename = optoperator:match(filename)
   end
-  local file = io.open(kpse.find_file(filename, 'map'))
+  local file = io.open(kpse.find_file(filename, 'map'), 'r')
   for line in file:lines() do mapline(line, operator) end
   file:close()
 end

@@ -1,11 +1,11 @@
 #!/bin/sh
-ENGINE="$(which luametatex)"
+ENGINE="$(which luametatex$EXE_EXT)"
 ENGINE_DIR="$(dirname "$ENGINE")"
 REPO="$(pwd)"
 cd "$(dirname "$ENGINE")"
-ln -s luametatex luametaplain
-ln -s luametatex luametalatex
-ln -s luametatex luametalatex-dev
+ln -s luametatex$EXE_EXT luametaplain$EXE_EXT
+ln -s luametatex$EXE_EXT luametalatex$EXE_EXT
+ln -s luametatex$EXE_EXT luametalatex-dev$EXE_EXT
 ln -s "$REPO/luametaplain.lua" .
 ln -s "$REPO/luametalatex.lua" .
 ln -s "$REPO/luametalatex-dev.lua" .

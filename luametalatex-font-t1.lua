@@ -119,7 +119,7 @@ local function parse_maintable(offset, str)
 end
 
 return function(filename)
-  local file = io.open(filename)
+  local file = io.open(filename, 'rb')
   local _, length = string.unpack("<I2I4", file:read(6))
   local preface = file:read(length)
   _, length = string.unpack("<I2I4", file:read(6))

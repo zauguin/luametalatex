@@ -68,7 +68,7 @@ local function readpostnames(buf, i, usedcids, encoding)
   return newusedcids
 end
 return function(filename, fontid, reencode)
-  local file = io.open(filename)
+  local file = io.open(filename, 'rb')
   local buf = file:read'a'
   file:close()
   local magic, tables = sfnt.parse(buf, 1, fontid)

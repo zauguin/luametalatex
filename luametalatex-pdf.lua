@@ -23,7 +23,7 @@ local function stream(pdf, num, dict, content, isfile, raw)
   end
   pdf[num] = {offset = pdf.file:seek()}
   if isfile then
-    local f = io.open(content)
+    local f = io.open(content, 'rb')
     content = f:read'a'
     f:close()
   end
@@ -56,7 +56,7 @@ local function indirect(pdf, num, content, isfile, objstream)
     error[[Invalid object]]
   end
   if isfile then
-    local f = io.open(content)
+    local f = io.open(content, 'rb')
     content = f:read'a'
     f:close()
   end
@@ -165,7 +165,7 @@ local pdfmeta = {
 }
 pdfmeta.__index = pdfmeta
 local function open(filename)
-  local file = io.open(filename, 'w')
+  local file = io.open(filename, 'wb')
   file:write"%PDF-X.X\n%🖋\n"
   return setmetatable({file = file, version = '1.7', [0] = 0, pages = {}, objstream = {}}, pdfmeta)
 end

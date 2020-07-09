@@ -40,7 +40,7 @@ do
 end
 -- callback_register('read_data_file', function(name) error[[TODO]]return kpse.find_file(name, 'tex', true) end)
 callback_register('open_data_file', function(name)
-  local f = io.open(name)
+  local f = io.open(name, 'r')
   return setmetatable({
     reader = function()
       local line = f:read()

@@ -204,7 +204,7 @@ end
 local png_functions = {}
 
 function png_functions.scan(img)
-  local file = io.open(img.filepath)
+  local file = io.open(img.filepath, 'rb')
   if not file then
     error[[PDF image could not be opened.]]
   end
@@ -228,7 +228,7 @@ local intents = {[0]=
 }
 local function srgb_lookup(pfile, intent)
   if not srgb_colorspace then
-    local f = io.open(kpse.find_file'sRGB.icc.zlib')
+    local f = io.open(kpse.find_file'sRGB.icc.zlib', 'rb')
     local profile = f:read'a'
     f:close()
     local objnum = pfile:stream(nil, '/Filter/FlateDecode/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP, nil, true)
@@ -259,7 +259,7 @@ local function rawimage(t, content)
 end
 
 function png_functions.write(pfile, img)
-  local file = io.open(img.filepath)
+  local file = io.open(img.filepath, 'rb')
   if not file then
     error[[PDF image could not be opened.]]
   end

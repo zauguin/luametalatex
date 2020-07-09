@@ -581,7 +581,7 @@ end
 -- file:close()
 -- io.open(arg[3], 'w'):write(myfunc(buf, 1, 1, nil, {{3}, {200}, {1000}, {1329}, {1330}, {1331}})):close()
 return function(filename, fontid, encoding) return function(fontdir, usedcids)
-  local file = io.open(filename)
+  local file = io.open(filename, 'rb')
   local buf = file:read'a'
   local i = 1
   file:close()
