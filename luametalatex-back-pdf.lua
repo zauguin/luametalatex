@@ -904,3 +904,19 @@ end, "protected")
 token.luacmd("lastsavedboxresourceindex", function()
   return integer_code, lastbox
 end, "protected", "value")
+
+local saved_pos_x, saved_pos_y = -1, -1
+local save_pos_whatsit = declare_whatsit('save_pos', function(_, _, _, x, y)
+  saved_pos_x, saved_pos_y = assert(math.tointeger(x)), assert(math.tointeger(y))
+end)
+token.luacmd("savepos", function() -- \savepos
+  return node.direct.write(node.direct.new(whatsit_id, save_pos_whatsit))
+end, "protected")
+
+token.luacmd("lastxpos", function()
+  return integer_code, (saved_pos_x+.5)//1
+end, "protected", "value")
+
+token.luacmd("lastypos", function()
+  return integer_code, (saved_pos_y+.5)//1
+end, "protected", "value")

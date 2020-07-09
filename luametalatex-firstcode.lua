@@ -114,10 +114,7 @@ token.luacmd("immediate", function() -- \immediate
   local function_id = next_tok.index
   return functions[function_id](function_id, 'immediate')
 end, "protected")
--- functions[43] = function() -- \pdfvariable
---   local name = token.scan_string()
---   print('Missing \\pdf' .. name)
--- end
+
 require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
 require'luametalatex-node-luaotfload'

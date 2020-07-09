@@ -252,7 +252,7 @@ function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
       _, h, d = direct.getwhd(n)
     end
     y = y - (h or 0)
-    nodehandler[getid(n)](p, n, x, y, list, y0, level+1)
+    nodehandler[getid(n)](p, n, x, (y+.5)//1, list, y0, level+1)
     y = y - (d or 0)
   end
 end
