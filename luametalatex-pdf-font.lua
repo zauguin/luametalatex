@@ -1,5 +1,9 @@
 local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 
+local buildtff = require'luametalatex-pdf-font-ttf'
+local buildcff = require'luametalatex-pdf-font-cff'
+local buildcff_from_t1 = require'luametalatex-pdf-font-t1'
+
 local tounicode = {
   [-3] = require'luametalatex-pdf-font-cmap3',
          require'luametalatex-pdf-font-cmap1',
@@ -181,9 +185,9 @@ local function buildfont0cff(pdf, fontdir, usedcids)
   else
     if fontdir.filename then
       if fontdir.format == "type1" then
-        cff = require'luametalatex-pdf-font-t1'(fontdir.filename, fontdir.encoding)(fontdir, usedcids)
+        cff = buildcff_from_t1(fontdir.filename, fontdir.encoding)(fontdir, usedcids)
       elseif fontdir.format == "opentype" then
-        cff = require'luametalatex-pdf-font-cff'(fontdir.filename, 1, fontdir.encodingbytes == 1 and (fontdir.encoding or true))(fontdir, usedcids)
+        cff = buildcff(fontdir.filename, 1, fontdir.encodingbytes == 1 and (fontdir.encoding or true))(fontdir, usedcids)
       else
         error[[Unsupported format]]
       end
@@ -207,7 +211,7 @@ local function buildfont0ttf(pdf, fontdir, usedcids)
   if fontdir.ttf then
     ttf = fontdir:ttf(usedcids) -- WARNING: If you implement this: You always have to add a .notdef glyph at index 0. This one is *not* included in usedcids
   else
-    ttf = require'luametalatex-pdf-font-ttf'(fontdir.filename, 1, fontdir.encoding)(fontdir, usedcids)
+    ttf = buildtff(fontdir.filename, 1, fontdir.encoding)(fontdir, usedcids)
   end
   local lastcid = -1
   local cidtogid = {}

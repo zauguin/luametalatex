@@ -1,5 +1,5 @@
-local sfnt = require'libSfnt'
-local stdnames = require'ttfstaticstrings'
+local sfnt = require'luametalatex-font-sfnt'
+local stdnames = require'luametalatex-font-ttf-data'
 local function round(x)
   local i, f = math.modf(x)
   if f < 0 then
