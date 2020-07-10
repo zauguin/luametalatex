@@ -28,11 +28,11 @@ ln -s "$REPO" tex/luametalatex/base
 ln -s "$REPO" tex/luametalatex-dev/base
 mkdir -p web2c
 cat >> web2c/texmf.cnf << "EOF"
-TEXINPUTS.luametaplain    = $TEXMFDOTDIR;$TEXMF/tex/{luametatex,luatex,plain,generic,}//
+TEXINPUTS.luametaplain    = $TEXMFDOTDIR;$TEXMF/tex/{luametaplain,luametatex,luatex,plain,generic,}//
 TEXINPUTS.luametalatex    = $TEXMFDOTDIR;$TEXMF/tex/{luametalatex,lualatex,latex,luametatex,luatex,generic,}//
 TEXINPUTS.luametalatex-dev= $TEXMFDOTDIR;$TEXMF/tex/{luametalatex,latex-dev,lualatex,latex,luametatex,luatex,generic,}//
 
-LUAINPUTS.luametaplain    = $TEXMFDOTDIR;$TEXMF/scripts/{$progname,$engine,}/{lua,}//;$TEXMF/tex/{luametatex,luatex,plain,generic,}//
+LUAINPUTS.luametaplain    = $TEXMFDOTDIR;$TEXMF/scripts/{$progname,$engine,}/{lua,}//;$TEXMF/tex/{luametaplain,luametatex,luatex,plain,generic,}//
 LUAINPUTS.luametalatex    = $TEXMFDOTDIR;$TEXMF/scripts/{$progname,$engine,}/{lua,}//;$TEXMF/tex/{luametalatex,lualatex,latex,luametatex,luatex,generic,}//
 LUAINPUTS.luametalatex-dev= $TEXMFDOTDIR;$TEXMF/scripts/{$progname,$engine,}/{lua,}//;$TEXMF/tex/{luametalatex,latex-dev,lualatex,latex,luametatex,luatex,generic,}//
 EOF
