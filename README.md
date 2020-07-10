@@ -4,7 +4,7 @@
 This code is in early stages of development and contains more bugs than features. _Do not_ expect it to be compatible with normal documents. Also later versions will contain many breaking changes.
 
 ## Prerequisites
-You need an up-to-date TeX Live installation and the latest version of LuaMetaTeX.
+You need an up-to-date TeX Live installation and the latest version of LuaMetaTeX. Additionally a current development version of luaotfload is required. (Of course, luaotfload is not necessary if you only want to use `luametaplain` without Unicode fonts.)
 
 Additionally a special library version of LuaTeX's kpathsea Lua binding is needed which is provided as a binary for Linux x64 and Windows x64. The Windows version is much less tests and may be out-of-date. For other platforms you have to compile it yourself. Drop me a line if you need any instructions. (The source can be found under https://github.com/zauguin/luametalatex-kpse)
 
