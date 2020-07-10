@@ -75,8 +75,6 @@ for i, a in ipairs(os.selfarg) do
   os.selfarg[i] = a
   if a:sub(1, 11) == "--progname=" then
     format = a:sub(12)
-  elseif a == '--ini' then
-    is_initex = true
   end
 end
 local dir = absdir(os.selfdir)
@@ -106,17 +104,6 @@ for i = #dirseparators, 1, -1 do
 end
 error[[CRITICAL: Initialization script not found]]
 ::FOUND::
--- table.insert(arg, 1, "--lua=" .. dir)
--- table.insert(arg, 1, "luametatex")
--- arg[0] = nil
--- local _, msg = os.exec(arg)
--- error(msg)
 os.setenv("engine", status.luatex_engine)
-local ret_value
 local args = os.selfarg[1] and " \"" .. table.concat(os.selfarg, "\" \"") .. "\"" or ""
-if is_initex then
-  ret_value = os.execute(string.format("luametatex \"--lua=%s\" --arg0=\"%s\"%s", dir, os.selfarg[0], args))
-else
-  ret_value = os.execute(string.format("luametatex \"--fmt=%s\" \"--lua=%s\" --arg0=\"%s\"%s", format, dir, os.selfarg[0], args))
-end
-os.exit(x)
+os.exit(os.execute(string.format("luametatex \"--lua=%s\" --arg0=\"%s\"%s", dir, os.selfarg[0], args)))

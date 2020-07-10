@@ -1,31 +1,18 @@
 do
-  local ourpath = lua.startupfile:match('(.*[/\\])[^/\\]*%.lua$')
+  local ourpath
+  ourpath, texconfig.formatname = lua.startupfile:match('(.*[/\\])([^/\\]*)%-init%.lua$')
   kpse = assert(package.loadlib(ourpath .. 'kpse.' .. (os.type == 'windows' and 'dll' or 'so'), 'luaopen_kpse'))()
 end
-local interaction
 do
-  local arg0, progname
+  local arg_pattern = '-' * lpeg.P'-'^-1 * lpeg.C((1-lpeg.P'=')^1) * ('=' * lpeg.C(lpeg.P(1)^0) + lpeg.Cc(true))
   for _, a in ipairs(arg) do
-    if a:sub(1,11) == "--progname=" then
-      progname = a:sub(12)
-    elseif a:sub(1,7) == "--arg0=" then
-      arg0 = a:sub(8)
-    elseif a:match'^%-%-?interaction=' then
-      local interaction_name = a:sub(a:find'='+1)
-      interaction = ({
-        batchmode=0,
-        nonstopmode=1,
-        scrollmode=2,
-        errorstopmode=3,
-      })[interaction_name]
-      if not interaction then
-        texio.write('term', string.format('Unknown interaction mode %q ignored.\n', interaction_name))
-      end
+    local name, value = arg_pattern:match(a)
+    if name then
+      arg[name] = value
     end
   end
-  os.arg0 = arg0
-  kpse.set_program_name(arg0, progname)
 end
+kpse.set_program_name(arg.arg0 or arg[arg[0]], arg.progname)
 package.searchers[2] = function(modname)
   local filename = kpse.find_file(modname, "lua", true)
   if not filename then
@@ -59,8 +46,16 @@ end
 
 callback_register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
 function texconfig.init()
+  local interaction = ({ [true] = 3, [false] = false,
+    batchmode=0,
+    nonstopmode=1,
+    scrollmode=2,
+    errorstopmode=3,
+  })[arg.interaction or false]
   if interaction then
     tex.setinteraction(interaction)
+  elseif interaction == nil then
+    texio.write('term', string.format('Unknown interaction mode %q ignored.\n', arg.interaction))
   end
   if build_bytecode then -- Effectivly if status.ini_version
     require'luametalatex-lateinit'(build_bytecode)
