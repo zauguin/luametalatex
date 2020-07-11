@@ -20,8 +20,11 @@ for i, a in ipairs(os.selfarg) do
   end
 end
 os.setenv("engine", status.luatex_engine)
-local kpse_call = io.popen(string.format("kpsewhich -progname %s -format lua -must-exist %s-init.lua", format, format))
-local file = kpse_call:read()
+local kpse_call = io.popen(string.format("kpsewhich -progname %s -format lua -all -must-exist %s-init.lua", format, format))
+local file
+repeat
+  file = kpse_call:read()
+until not file:match('^%.')
 if not kpse_call:close() then
   error(file)
 end
