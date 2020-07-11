@@ -6,13 +6,13 @@ This code is in early stages of development and contains more bugs than features
 ## Prerequisites
 You need an up-to-date TeX Live installation and the latest version of LuaMetaTeX. Additionally a current development version of luaotfload is required. (Of course, luaotfload is not necessary if you only want to use `luametaplain` without Unicode fonts.)
 
-Additionally a special library version of LuaTeX's kpathsea Lua binding is needed which is provided as a binary for Linux x64 and Windows x64. The Windows version is much less tests and may be out-of-date. For other platforms you have to compile it yourself. Drop me a line if you need any instructions. (The source can be found under https://github.com/zauguin/luametalatex-kpse)
+IF you are not using Linux x64 or Windows x64, you additionally need to compile a special library version of LuaTeX's kpathsea Lua binding. The source is available under https://github.com/zauguin/luametalatex-kpse . After compiling, the resulting `kpse.so` or `kpse.dll` has to be stored in the main directory of luametalatex (the same directory where `luametalatex-init.lua` is stored)
 
 ## How to install (automatically)
 Obtain `luametatex` from ConTeXt, drop the binary into the same location where your `luatex` binary is installed and then run `install.sh`.
 
 ## How to install (manually)
-Obtain `luametatex` from ConTeXt, drop the binary into the same location where your `luatex` binary is installed and copy (or sym-link) the file `luametalatex.lua` into the same directory. Additionally create a sym-link `luametalatex` to `luametatex` in the same directory. Then copy (or sym-link) this entire repo to `.../texmf-local/tex/lualatex/luametalatex`. 
+Obtain `luametatex` from ConTeXt, drop the binary into the same location where your `luatex` binary is installed and copy (or sym-link) the file `luametalatex.lua` into the same directory. Additionally create a sym-link `luametalatex` to `luametatex` in the same directory. Then install `luametalatex` into your texmf tree by running `l3build install` in this repository.
 
 Finally add the lines (on Windows, `$(luametalatex.lua)` has to be replaced by the full path to `luametalatex.lua`)
 ```
