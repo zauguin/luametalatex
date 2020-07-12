@@ -166,7 +166,7 @@ local pdfmeta = {
 pdfmeta.__index = pdfmeta
 local function open(filename)
   local file = io.open(filename, 'wb')
-  file:write"%PDF-X.X\n%\xe4\xf6\xfc\xdf\n"
+  file:write"%PDF-X.X\n%\xC1\xAC\xC1\xB4\n"
   return setmetatable({file = file, version = '1.7', [0] = 0, pages = {}, objstream = {}}, pdfmeta)
 end
 return {
