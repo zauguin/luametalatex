@@ -94,7 +94,36 @@ local infodir = ""
 local namesdir = ""
 local catalogdir = ""
 local catalog_openaction
-local creationdate = os.date("D:%Y%m%d%H%M%S%z"):gsub("+0000$", "Z"):gsub("%d%d$", "'%0")
+local creationdate = os.date("D:%Y%m%d%H%M%S")
+do
+  local time0 = os.time()
+  local tz = os.date('%z', time0)
+  if tz:match'^[+-]%d%d%d%d$' then
+    if tz:sub(1) == '0000' then
+      tz = 'Z'
+    else
+      tz = tz:sub(1,3) .. "'" .. tz:sub(4)
+    end
+  else
+    local utc_time = os.date('!*t')
+    utc_time.isdst = nil
+    local time1 = os.time(utc_time)
+    local offset = time1-time0
+    if offset == 0 then
+      tz = 'Z'
+    else
+      if offset > 0 then
+        tz = '-'
+      else
+        tz = '+'
+        offset = -offset
+      end
+      offset = offset // 60
+      tz = string.format("%s%02i'%02i", tz, offset//60, offset%60)
+    end
+  end
+  creationdate = creationdate .. tz
+end
 local function write_infodir(p)
   local additional = ""
   if not string.find(infodir, "/CreationDate", 1, false) then
