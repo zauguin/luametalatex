@@ -84,7 +84,7 @@ token.luacmd("shipout", function()
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs, colorstacks)
   cur_page = nil
   local content = pfile:stream(nil, '', out)
-  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources), annots, pdfvariable.pageattr))
+  pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources .. pdf.pageresources), annots, pdfvariable.pageattr, pdf.pageattributes))
   node.flush_list(list)
   token.put_next(reset_deadcycles)
   token.scan_token()
@@ -924,3 +924,13 @@ end, "protected", "value")
 token.luacmd("lastypos", function()
   return integer_code, (saved_pos_y+.5)//1
 end, "protected", "value")
+
+local function pdf_register_funcs(name)
+  pdf[name] = ""
+  pdf['get' .. name] = function() return pdf[name] end
+  pdf['set' .. name] = function(s) pdf[name] = assert(s) end
+end
+
+pdf_register_funcs'pageattributes'
+pdf_register_funcs'pageresources'
+pdf_register_funcs'pagesattributes'
