@@ -165,7 +165,11 @@ local pdfmeta = {
 }
 pdfmeta.__index = pdfmeta
 local function open(filename)
-  local file = io.open(filename, 'wb')
+  local file, msg = io.open(filename, 'wb')
+  if not file then
+    tex.error('Unable to open output file', string.format("Opening the output file %q failed. According to your system, the reason is: %q. If you continue, all output will be discarded.", filename, msg))
+    file = assert(io.tmpfile())
+  end
   file:write"%PDF-X.X\n%\xC1\xAC\xC1\xB4\n"
   return setmetatable({file = file, version = '1.7', [0] = 0, pages = {}, objstream = {}}, pdfmeta)
 end
