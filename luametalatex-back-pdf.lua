@@ -712,7 +712,7 @@ token.luacmd("pdfextension", function(_, imm)
       local attr = token.scan_keyword'stream' and (token.scan_keyword'attr' and token.scan_string() or '')
       local isfile = token.scan_keyword'file'
       local content = token.scan_string()
-      if immediate then
+      if imm == 'immediate' then
         if attr then
           pfile:stream(num, attr, content, isfile)
         else
