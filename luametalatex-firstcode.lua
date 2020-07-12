@@ -104,6 +104,25 @@ token.luacmd("write", function(_, immediate) -- \write
     node.direct.write(whatsit)
   end
 end, "protected")
+local late_lua_whatsit = new_whatsit('late_lua', function(p, pfile, n, x, y)
+  local code = p.data
+  if not code then
+    code = token.to_string(p.token)
+  end
+  if type(code) == 'string' then
+    code = assert(load(code, nil, 't'))
+  elseif not code then
+    error[[Missing code in latelua]]
+  end
+  return pdf._latelua(pfile, x, y, code)
+end)
+token.luacmd("latelua", function(_) -- \latelua
+  local content = token.scan_tokenlist()
+  local props = {token = content}
+  local whatsit = node.direct.new(whatsit_id, late_lua_whatsit)
+  properties[whatsit] = props
+  node.direct.write(whatsit)
+end, "protected")
 
 local functions = lua.get_functions_table()
 token.luacmd("immediate", function() -- \immediate
