@@ -9,19 +9,19 @@ local function round(x)
   end
 end
 local function addglyph(glyph, usedcids, cidtogid)
-  -- FIXME: Pseudocode
   if string.unpack(">i2", glyph) < 0 then -- We have a composite glyph.
-    -- This is an untested mess. Disaster will follow.
+    -- This is a mess. Disaster will follow.
     local offset = 11
     while offset do
       local flags, component = string.unpack(">I2I2", glyph, offset)
       local gid = cidtogid[component]
+      print(glyph, component, gid)
       if not gid then
-        gid = #usedcids+1
-        usedcids[gid] = {component}
+        gid = #usedcids
+        usedcids[gid+1] = {component}
         cidtogid[component] = gid
       end
-      glyph = glyph:sub(1, offset-1) .. string.pack(">I2", gid).. glyph:sub(offset+2)
+      glyph = glyph:sub(1, offset+1) .. string.pack(">I2", gid).. glyph:sub(offset+4)
       offset = flags&32==32 and offset + 4 + (flags&1==1 and 4 or 2) + (flags&8==8 and 2 or (flags&64==64 and 4 or (flags&128==128 and 8 or 0)))
     end
   end
