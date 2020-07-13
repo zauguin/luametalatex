@@ -1,7 +1,18 @@
 do
   local ourpath
   ourpath, texconfig.formatname = lua.startupfile:match('(.*[/\\])([^/\\]*)%-init%.lua$')
-  kpse = assert(package.loadlib(ourpath .. 'kpse.' .. (os.type == 'windows' and 'dll' or 'so'), 'luaopen_kpse'))()
+  local function try_lib(name)
+    local path = string.format('%s%s.%s', ourpath, name,
+      os.type == 'windows' and 'dll' or 'so')
+    return package.loadlib(path, '*') and path
+  end
+  local library  = try_lib'luametalatex' or try_lib'kpse'
+  if not library then
+    error[[C support library not found. Please fix your installation]]
+  end
+  kpse = assert(package.loadlib(library, 'luaopen_luametalatex_kpse') or package.loadlib(library, 'luaopen_kpse'))()
+  package.loaded.kpse = kpse
+  package.preload.luaharfbuzz = package.loadlib(library, 'luaopen_luametalatex_harfbuzz') or package.loadlib(library, 'luaopen_luametalatex_harfbuzz') or nil
 end
 do
   local arg_pattern = '-' * lpeg.P'-'^-1 * lpeg.C((1-lpeg.P'=')^1) * ('=' * lpeg.C(lpeg.P(1)^0) + lpeg.Cc(true))
