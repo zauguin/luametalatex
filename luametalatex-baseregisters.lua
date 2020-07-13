@@ -174,6 +174,9 @@ local dir_regs = require 'luametalatex-dir-registers'
 dir_regs 'textdir'
 dir_regs 'bodydir'
 dir_regs 'pagedir'
+dir_regs 'pardir'
+dir_regs 'linedir'
+dir_regs 'mathdir'
 
 if status.ini_version then
   -- Run in pre_dump callback:
