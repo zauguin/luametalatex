@@ -1,0 +1,41 @@
+% Adapted based on tex-ini-files 2016-04-15: luatexconfig.tex
+
+% Load shared (PDF) settings in LuaMetaTeX
+
+\begingroup
+  \catcode`\{=1 %
+  \catcode`\}=2 %
+  \catcode`\#=6 %
+  \def\list{%
+      {compresslevel}%
+      {decimaldigits}%
+      {horigin}%
+      {minorversion}%
+      {objcompresslevel}%
+      {pkresolution}%
+      {vorigin}%
+  }%
+  % LuaMetaTeX doesn't have \pdfoutput, etc.:
+  % emulate names where appropriate
+  \let\pdfoutput\outputmode
+  \let\pdfpageheight\pageheight
+  \let\pdfpagewidth\pagewidth
+  \def\do#1{%
+    \ifx\relax#1\else
+      \expandafter\edef\csname pdf#1\endcsname{\pdfvariable #1}%
+      \expandafter\do
+    \fi
+  }%
+  \expandafter\do\list\relax
+  % The file pdftexconfig.tex contains only <primitive> = <value> lines
+  % so can now be read using the (emulated) primitives
+  % This needs to be global so set \globaldefs for the rest of the group
+  \globaldefs=1 %
+  \input{pdftexconfig}%
+  % Pick up on a request for DVI mode and apply it whilst \pdfoutput is
+  % still defined
+  \ifx\dvimode\relax
+    \pdfoutput=0 %
+  \fi
+  \let\dvimode\undefined
+\endgroup
