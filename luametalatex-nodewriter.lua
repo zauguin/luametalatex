@@ -227,7 +227,7 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
       local next = getnext(n)
       local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
       if direction == 1 then x = x - w end
-      nodehandler[id](p, n, x, y, list, x0, level+1)
+      nodehandler[id](p, n, x, y, list, x0, level+1, direction)
       if direction == 0 then x = w + x end
     end
   end
@@ -438,7 +438,7 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
     end
   end
 end
-function nodehandler.glyph(p, n, x, y, ...)
+function nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
   if getfont(n) ~= p.vfont.fid then
     p.vfont.fid = getfont(n)
     p.vfont.font = font.getfont(getfont(n)) or font.fonts[getfont(n)]
@@ -449,9 +449,9 @@ function nodehandler.glyph(p, n, x, y, ...)
     texio.write_nl("Missing character")
     return
   end
-  if c.commands then return do_commands(p, c, f, fid, x, y, ...) end
+  if c.commands then return do_commands(p, c, f, fid, x, y, outer, x0, level, direction) end
   local xoffset, yoffset = getoffsets(n)
-  toglyph(p, getfont(n), x + xoffset, y + yoffset, getexpansion(n))
+  toglyph(p, getfont(n), x + (direction == 1 and -xoffset or xoffset), y + yoffset, getexpansion(n))
   local index = c.index
   if index then
     -- if f.encodingbytes == -3 then
