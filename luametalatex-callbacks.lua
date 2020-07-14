@@ -15,7 +15,12 @@ if status.ini_version then
 else
   callback_register('define_font', function(name, size)
     local f = read_tfm(name, size)
-    if not f then return end
+    if not f then
+      tex.error(string.format("Font %q not found", name), "The requested font could't be loaded.\n\z
+        Are you sure that you passed the right name and\n\z
+        that the font is actually installed?")
+      return 0
+    end
     return font.define(f)
   end)
 end

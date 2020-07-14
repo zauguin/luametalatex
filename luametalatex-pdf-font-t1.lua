@@ -1,4 +1,3 @@
--- nodefont = true
 -- Some helpers:
 -- A kpse wrapper
 local serialize_cff = require'luametalatex-font-cff'
