@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local sfnt = require'luametalatex-font-sfnt'
 local stdStrings = require'luametalatex-font-cff-data'
 local offsetfmt = ">I%i"
@@ -576,15 +578,11 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
   end
   return require'luametalatex-font-cff'(top), bbox
 end
--- local file = io.open(arg[1])
--- local buf = file:read'a'
--- file:close()
--- io.open(arg[3], 'w'):write(myfunc(buf, 1, 1, nil, {{3}, {200}, {1000}, {1329}, {1330}, {1331}})):close()
+
 return function(filename, fontid, encoding) return function(fontdir, usedcids)
-  local file = io.open(filename, 'rb')
-  local buf = file:read'a'
+  local file <close> = readfile('subset', filename, nil)
+  local buf = file()
   local i = 1
-  file:close()
   local magic = buf:sub(1, 4)
   if magic == "ttcf" or magic == "OTTO" then
     -- assert(not encoding) -- nil or false
@@ -598,4 +596,3 @@ return function(filename, fontid, encoding) return function(fontdir, usedcids)
   fontdir.bbox = bbox
   return content
 end end
--- io.open(arg[3], 'w'):write(myfunc(buf, 1, 1, require'parseEnc'(arg[2]), {{string.byte'a'}, {string.byte'b'}, {string.byte'-'}})):close()

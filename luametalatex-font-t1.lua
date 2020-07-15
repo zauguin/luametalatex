@@ -140,11 +140,9 @@ local function parse_maintable(offset, str)
   return continue_maintable(offset, str, {})
 end
 
-return function(filename)
-  local file = io.open(filename, 'rb')
-  local preface, private = string.unpack("<xxs4xxs4", file:read'a')
+return function(data)
+  local preface, private = string.unpack("<xxs4xxs4", data)
   private = decrypt(55665, 4, private)
-  file:close()
   local after = parse_maintable(1, preface .. private)
   local lenIV = after.Private.lenIV or 4
   local chars = after.CharStrings

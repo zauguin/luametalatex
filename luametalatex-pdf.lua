@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local format = string.format
 local byte = string.byte
 local pack = string.pack
@@ -23,9 +25,8 @@ local function stream(pdf, num, dict, content, isfile, raw)
   end
   pdf[num] = {offset = pdf.file:seek()}
   if isfile then
-    local f = io.open(content, 'rb')
-    content = f:read'a'
-    f:close()
+    local file <close> = readfile('pdf_stream', content, nil)
+    content = file()
   end
   local level = not raw and pdfvariable.compresslevel or 0
   local filter = ''
@@ -56,9 +57,8 @@ local function indirect(pdf, num, content, isfile, objstream)
     error[[Invalid object]]
   end
   if isfile then
-    local f = io.open(content, 'rb')
-    content = f:read'a'
-    f:close()
+    local file <close> = readfile('pdf_dict', content, nil)
+    content = file()
   end
   if objstream ~= false and pdfvariable.objcompresslevel ~= 0 then
     objstream = objstream or true

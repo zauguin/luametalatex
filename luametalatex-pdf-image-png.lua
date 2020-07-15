@@ -1,3 +1,4 @@
+local readfile = require'luametalatex-readfile'
 local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 
 local function ignore() end
@@ -204,12 +205,11 @@ end
 local png_functions = {}
 
 function png_functions.scan(img)
-  local file = io.open(img.filepath, 'rb')
+  local file <close> = readfile('image', img.filepath, nil)
   if not file then
     error[[PDF image could not be opened.]]
   end
-  local buf = file:read'a'
-  file:close()
+  local buf = file()
   local t = run(buf, 1, #buf, 'IDAT')
   img.pages = 1
   img.page = 1
@@ -228,9 +228,8 @@ local intents = {[0]=
 }
 local function srgb_lookup(pfile, intent)
   if not srgb_colorspace then
-    local f = io.open(kpse.find_file'sRGB.icc.zlib', 'rb')
-    local profile = f:read'a'
-    f:close()
+    local file <close> = readfile('silent', 'sRGB.icc.zlib', 'other binary files')
+    local profile = file()
     local objnum = pfile:stream(nil, '/Filter/FlateDecode/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP, nil, true)
     srgb_colorspace = string.format('[/ICCBased %i 0 R]', objnum)
   end
@@ -259,12 +258,11 @@ local function rawimage(t, content)
 end
 
 function png_functions.write(pfile, img)
-  local file = io.open(img.filepath, 'rb')
+  local file <close> = readfile('silent', img.filepath, nil)
   if not file then
     error[[PDF image could not be opened.]]
   end
-  local buf = file:read'a'
-  file:close()
+  local buf = file()
   local t = run(buf, 1, #buf, 'IEND')
   local colorspace
   local intent = ''

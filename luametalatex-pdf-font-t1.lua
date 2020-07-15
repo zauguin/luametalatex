@@ -1,11 +1,13 @@
+local readfile = require'luametalatex-readfile'
+
 -- Some helpers:
--- A kpse wrapper
 local serialize_cff = require'luametalatex-font-cff'
 local serializet2 = require'luametalatex-font-t2'
 local parseT1 = require'luametalatex-font-t1'
 local t1tot2 = require'luametalatex-font-t1tot2'
 return function(filename, reencode)
-  local parsed_t1 = parseT1(filename)
+  local file <close> = readfile('subset', filename, nil)
+  local parsed_t1 = parseT1(file())
   return function(f, usedcids)
     f.bbox = parsed_t1.FontBBox
     local fonttable = {

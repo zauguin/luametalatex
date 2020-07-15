@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local sfnt = require'luametalatex-font-sfnt'
 local stdnames = require'luametalatex-font-ttf-data'
 local function round(x)
@@ -15,7 +17,6 @@ local function addglyph(glyph, usedcids, cidtogid)
     while offset do
       local flags, component = string.unpack(">I2I2", glyph, offset)
       local gid = cidtogid[component]
-      print(glyph, component, gid)
       if not gid then
         gid = #usedcids
         usedcids[gid+1] = {component}
@@ -68,11 +69,10 @@ local function readpostnames(buf, i, usedcids, encoding)
   return newusedcids
 end
 return function(filename, fontid, reencode)
-  local file = io.open(filename, 'rb')
-  local buf = file:read'a'
-  file:close()
+  local file <close> = readfile('subset', filename, nil)
+  local buf = file()
   local magic, tables = sfnt.parse(buf, 1, fontid)
-  if magic ~=  "\0\1\0\0" then error[[Invalid TTF font]] end
+  if magic ~= "\0\1\0\0" then error[[Invalid TTF font]] end
   -- TODO: Parse post table and add reencoding support
   -- if tables.post and string.unpack(">I4", buf, tables.post[1]) == 0x00020000 and reencode then
   --   local encoding = require'parseEnc'(reencode)

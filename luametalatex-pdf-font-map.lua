@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local purenumber = lpeg.R'09'^1
 local optoperator = lpeg.C(lpeg.S'+-='^-1)*lpeg.C(lpeg.P(1)^0)
 local commentchar = lpeg.S' %*;#'+-1
@@ -38,9 +40,8 @@ local function mapfile(filename, operator)
   if not operator then
     operator, filename = optoperator:match(filename)
   end
-  local file = io.open(kpse.find_file(filename, 'map'), 'r')
+  local file <close> = readfile('map', filename, 'map', 'r')
   for line in file:lines() do mapline(line, operator) end
-  file:close()
 end
 local function reset()
   for k in next, fontmap do
