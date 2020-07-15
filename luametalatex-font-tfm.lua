@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local upper_mask = (1<<20)-1<<44
 local shifted_sign = 1<<43
 local function scale(factor1, factor2)
@@ -141,13 +143,9 @@ local function parse_tfm(buf, i, size)
 end
 local basename = ((1-lpeg.S'\\/')^0*lpeg.S'\\/')^0*lpeg.C((1-lpeg.P'.tfm'*-1)^0)
 return function(name, size)
-  local filename = kpse.find_file(name, 'tfm', true)
-  if not filename then return end
-  local f = io.open(filename, 'rb')
-  if not f then return end
-  local buf = f:read'*a'
-  f:close()
-  local result = parse_tfm(buf, 1, size)
+  local file <close> = readfile('tfm', name)
+  if not file then return end
+  local result = parse_tfm(file(), 1, size)
   result.name = basename:match(name)
   return result
 end

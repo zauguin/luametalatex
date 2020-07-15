@@ -6,7 +6,7 @@ local serializet2 = require'luametalatex-font-t2'
 local parseT1 = require'luametalatex-font-t1'
 local t1tot2 = require'luametalatex-font-t1tot2'
 return function(filename, reencode)
-  local file <close> = readfile('subset', filename, nil)
+  local file <close> = readfile('type1', filename)
   local parsed_t1 = parseT1(file())
   return function(f, usedcids)
     f.bbox = parsed_t1.FontBBox
@@ -40,7 +40,7 @@ return function(filename, reencode)
       -- LanguageGroup = parsed_t1.Private.LanguageGroup,
     }
     if not reencode and parsed_t1.Encoding == "StandardEncoding" then
-      reencode = kpse.find_file("8a.enc", "enc files")
+      reencode = '8a'
     end
     if reencode then
       parsed_t1.Encoding = require'luametalatex-font-enc'(reencode)

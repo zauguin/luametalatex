@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local fontcmds = {
   [243] = ">I1I4I4I4BB",
   [244] = ">I2I4I4I4BB",
@@ -166,13 +168,9 @@ local function parse_vf(buf, i, size)
 end
 local basename = ((1-lpeg.S'\\/')^0*lpeg.S'\\/')^0*lpeg.C((1-lpeg.P'.tfm'*-1)^0)
 return function(name, size, must_exist)
-  local filename = kpse.find_file(name, 'vf', must_exist)
-  if not filename then return end
-  local f = io.open(filename, 'rb')
-  if not f then return end
-  local buf = f:read'*a'
-  f:close()
-  local result = parse_vf(buf, 1, size)
+  local file <close> = readfile('vf', name)
+  if not file then return end
+  local result = parse_vf(file(), 1, size)
   result.name = basename:match(name)
   return result
 end

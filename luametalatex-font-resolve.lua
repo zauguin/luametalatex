@@ -7,7 +7,7 @@ local callback_find = callback.find
 local old_font_define = font.define
 local old_addcharacters = font.addcharacters
 
-require'luametalatex-pdf-font-map'.mapfile(kpse.find_file('pdftex.map', 'map', true))
+require'luametalatex-pdf-font-map'.mapfile'pdftex.map'
 
 local all_fonts = {}
 font.fonts = all_fonts
@@ -16,9 +16,9 @@ function font.getfont(id)
 end
 
 local fontextensions = {
-  ttf = {"truetype", "truetype fonts",},
-  otf = {"opentype", "opentype fonts",},
-  pfb = {"type1", "type1 fonts",},
+  ttf = "truetype",
+  otf = "opentype",
+  pfb = "type1",
 }
 fontextensions.cff = fontextensions.otf
 local fontformats = {
@@ -60,39 +60,14 @@ function font.define(f)
     local entry = fontmap[f.name]
     if entry then
       local filename = entry[3]
-      local format = filename and filename:sub(-4, -4) == '.' and fontextensions[filename:sub(-3, -1)]
-      if format then
-        f.format = format[1]
-        f.filename = kpse.find_file(filename, format[2])
-        local encoding = entry[4]
-        if encoding then
-          f.encoding = kpse.find_file(encoding, 'enc files')
-        end
-        if entry[5] then
-          assert(special_parser:match(entry[5], 1, f))
-        end
-      else
-        local done = false
-        for _, format in ipairs(fontformats) do
-          local filename = kpse.find_file(filename, format[2])
-          if filename then
-            f.filename = filename
-            f.format = format[1]
-            local encoding = entry[4]
-            if encoding then
-              f.encoding = kpse.find_file(encoding, 'enc files')
-            end
-            if entry[5] then
-              assert(special_parser:match(entry[5], 1, f))
-            end
-            done = true
-            break
-          end
-        end
-        if not done then
-          print('!', 'type3', require'inspect'(entry))
-          f.format = "type3"
-        end
+      local format
+      if f.format == 'unknown' then
+        f.format = filename and filename:sub(-4, -4) == '.' and fontextensions[filename:sub(-3, -1)] or 'type1'
+      end
+      f.filename = filename
+      f.encoding = entry[4]
+      if entry[5] then
+        assert(special_parser:match(entry[5], 1, f))
       end
     else
       f.format = "type3"

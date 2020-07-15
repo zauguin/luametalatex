@@ -1,4 +1,3 @@
-local readfile = require'luametalatex-readfile'
 local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 
 local function ignore() end
@@ -7,17 +6,18 @@ local parse = setmetatable({
   -- PLTE = below,
   -- IDAT = below,
   -- IEND = below,
-  -- I'm not yet sure what to do about the following four color management chunks:
-  -- These two will probably be ignored (if you care about this stuff, you probably
-  -- prefer an ICC profile anyway. Also especially cHRM requires some weird computations.)
-  -- cHRM = TODO, -- ignore?
-  -- gAMA = TODO, -- ignore?
+  -- I originally thought about ignoring cHRM and gAMA (if you care about this stuff, you probably
+  -- prefer an ICC profile anyway) but it was interesting to think about so it got implemented.
+  -- But, gAMA is ONLY supported in combination with cHRM and not on it's own.
+  -- cHRM = below,
+  -- gAMA = below,
   -- iCCP is implemented, but profiles are not cached, so it might include the
   -- same profile many times
   -- iCCP = below,
   -- I would expect sRGB to be the most common, but it is a bit complicated because
-  -- PDF seems to require us to ship an actual ICC profile to support sRGB. Maybe later.
-  -- sRGB = TODO,
+  -- PDF seems to require us to ship an actual ICC profile to support sRGB. Luckily,
+  -- such a profile is part of TeXLive anyway.
+  -- sRGB = below,
   sBIT = ignore,
   bKGD = ignore, -- Background color. Ignored since we support transparency
   hIST = ignore, -- Color histogram
@@ -204,12 +204,8 @@ end
 
 local png_functions = {}
 
-function png_functions.scan(img)
-  local file <close> = readfile('image', img.filepath, nil)
-  if not file then
-    error[[PDF image could not be opened.]]
-  end
-  local buf = file()
+function png_functions.scan(img, f)
+  local buf = f()
   local t = run(buf, 1, #buf, 'IDAT')
   img.pages = 1
   img.page = 1
@@ -228,9 +224,9 @@ local intents = {[0]=
 }
 local function srgb_lookup(pfile, intent)
   if not srgb_colorspace then
-    local file <close> = readfile('silent', 'sRGB.icc.zlib', 'other binary files')
+    local file <close> = readfile('data', 'sRGB.icc')
     local profile = file()
-    local objnum = pfile:stream(nil, '/Filter/FlateDecode/N ' .. tostring(colortype & 2 == 2 and '3' or '1'), t.iCCP, nil, true)
+    local objnum = pfile:stream(nil, '/N 3', profile) -- FIXME: file stream
     srgb_colorspace = string.format('[/ICCBased %i 0 R]', objnum)
   end
   return objnum, intents[intent] or ''
@@ -258,11 +254,11 @@ local function rawimage(t, content)
 end
 
 function png_functions.write(pfile, img)
-  local file <close> = readfile('silent', img.filepath, nil)
-  if not file then
-    error[[PDF image could not be opened.]]
+  local buf = img.filedata
+  if not buf then
+    local f <close> = assert(io.open(img.filepath, 'rb'))
+    buf = f:read'a'
   end
-  local buf = file()
   local t = run(buf, 1, #buf, 'IEND')
   local colorspace
   local intent = ''

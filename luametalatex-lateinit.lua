@@ -13,7 +13,7 @@ pdf = {
   variable = {},
 }
 require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before callbacks
-require'luametalatex-callbacks'
+require'luametalatex-basecallbacks'
 
 local functions = lua.getfunctionstable()
 -- I am not sure why this is necessary, but otherwise LuaMetaTeX resets

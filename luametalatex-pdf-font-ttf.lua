@@ -69,7 +69,7 @@ local function readpostnames(buf, i, usedcids, encoding)
   return newusedcids
 end
 return function(filename, fontid, reencode)
-  local file <close> = readfile('subset', filename, nil)
+  local file <close> = readfile('truetype', filename)
   local buf = file()
   local magic, tables = sfnt.parse(buf, 1, fontid)
   if magic ~= "\0\1\0\0" then error[[Invalid TTF font]] end

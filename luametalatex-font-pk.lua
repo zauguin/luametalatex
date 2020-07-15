@@ -192,12 +192,9 @@ local function parse_commands(buf, off, t)
   until cmd == 245
   return off
 end
-return function(filename)
-  local f = assert(io.open(filename, 'rb'))
-  local pk = f:read'a'
-  f:close()
+return function(data)
   local res = {}
-  local off = parse_commands(pk, 1, res)
+  local off = parse_commands(data, 1, res)
   -- assert(off == #pk+1) -- TODO: Check that only fillup bytes follow
   return res
 end

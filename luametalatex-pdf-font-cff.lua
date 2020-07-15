@@ -451,11 +451,6 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
   end
   -- top.CharStrings = named_charstrings
   if not top.ROS then
-    -- if encoding == true and top.Encoding < 3 then
-      -- if not reencode and parsed_t1.Encoding == "StandardEncoding" then
-      --   reencode = kpse.find_file("8a.enc", "enc files")
-      -- end
-    -- end
     if encoding == true then -- Use the built-in encoding
       CharStrings = parse_encoding(buf, i0, top.Encoding, CharStrings)
     elseif encoding then
@@ -580,7 +575,7 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
 end
 
 return function(filename, fontid, encoding) return function(fontdir, usedcids)
-  local file <close> = readfile('subset', filename, nil)
+  local file <close> = readfile('opentype', filename)
   local buf = file()
   local i = 1
   local magic = buf:sub(1, 4)

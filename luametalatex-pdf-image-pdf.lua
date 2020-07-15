@@ -31,8 +31,16 @@ end
 
 local pdf_functions = {}
 
-local function open_pdfe(img)
-  local file = pdfe.open(img.filepath)
+local function open_pdfe(img, f)
+  local file
+  if f and f.file then
+    file = pdfe.openfile(f.file)
+    f.file = nil
+  elseif img.filedata then
+    file = pdfe.new(img.filedata, #img.filedata)
+  elseif img.filepath then
+    file = pdfe.open(img.filepath)
+  end
   do
     local userpassword = img.userpassword
     local ownerpassword = img.ownerpassword
@@ -51,8 +59,8 @@ local function open_pdfe(img)
     assert(false)
   end
 end
-function pdf_functions.scan(img)
-  local file = open_pdfe(img)
+function pdf_functions.scan(img, f)
+  local file = open_pdfe(img, f)
   img.pages = pdfe.getnofpages(file)
   img.page = img.page or 1
   if img.page > img.pages then

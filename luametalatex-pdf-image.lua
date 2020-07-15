@@ -1,3 +1,5 @@
+local readfile = require'luametalatex-readfile'
+
 local rawset = rawset
 local setdata = node.direct.setdata
 local nodenew = node.direct.new
@@ -61,14 +63,18 @@ local function scan(img)
     if m ~= meta then img = new(img) end
     real = real_images[img]
     if real.stream then error[[stream images are not yet supported]] end
-    assert(real.filename)
     -- TODO: At some point we should just take the lowercased extension
     local imagetype = real.filename:match'%.pdf$' and 'pdf'
                    or real.filename:match'%.png$' and 'png'
                    or error'Unsupported image format'
-    real.filepath = assert(kpse.find_file(real.filename), "Image not found")
     real.imagetype = imagetype
-    imagetypes[imagetype].scan(real)
+    local f <close>, path = assert(readfile('image', real.filename))
+    if f.file then
+      real.filepath = path
+    else
+      real.filedata = f.data
+    end
+    imagetypes[imagetype].scan(real, f)
     setmetatable(img, restricted_meta)
   end
   img.transform = img.transform or 0

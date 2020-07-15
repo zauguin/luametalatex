@@ -1,6 +1,7 @@
 local pk_global_resolution, pk_resolution_is_fixed
 local pdfvariable = pdf.variable
 
+local readfile = require'luametalatex-readfile'
 local read_pk = require'luametalatex-font-pk'
 local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 return function(pdf, fontdir, usedcids)
@@ -13,7 +14,8 @@ return function(pdf, fontdir, usedcids)
     pk_resolution_is_fixed = pdfvariable.pkfixeddpi ~= 0
     kpse.init_prog("LUATEX", pk_global_resolution, pkmode ~= '' and pkmode or nil, nil) -- ?
   end
-  local pk = read_pk(kpse.find_file(fontdir.name, 'pk', pk_resolution_is_fixed and pk_global_resolution or (pk_global_resolution*fontdir.size/fontdir.designsize+.5)//1))
+  local f <close> = assert(readfile('pk', fontdir.name, pk_resolution_is_fixed and pk_global_resolution or (pk_global_resolution*fontdir.size/fontdir.designsize+.5)//1))
+  local pk = read_pk(f())
   local designsize = pk.designsize/1044654.326 -- 1044654.326=2^20*72/72.27 -- designsize in bp
   local hscale = 65536/pk.hppp / designsize -- 65291.158=2^16*72/72.27
   local vscale = 65536/pk.vppp / designsize -- 65291.158=2^16*72/72.27
