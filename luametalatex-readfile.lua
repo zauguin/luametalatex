@@ -7,17 +7,17 @@ local callbacks = require'luametalatex-callbacks'
 -- local categories = { data = 1, map = 2, image = 3, subset = 4, font = 5 -- , enc = 6, pdf_stream = 7, pdf_stream = 8, silent = 9}
 
 local our_callbacks = {
-  vf       = {'vf',             false, 'rb', 'find_vf_file_callback',       'read_vf_file_callback'},
-  tfm      = {'tfm',            false, 'rb', 'find_font_file_callback',     'read_font_file_callback'},
-  map      = {'map',            2,     'rb', 'find_map_file_callback',      'read_map_file_callback'},
-  enc      = {'enc',            false, 'rb', 'find_enc_file_callback',      'read_enc_file_callback'},
-  type1    = {'type1 fonts',    4,     'rb', 'find_type1_file_callback',    'read_type1_file_callback'},
-  truetype = {'truetype fonts', 4,     'rb', 'find_truetype_file_callback', 'read_truetype_file_callback'},
-  opentype = {'opentype fonts', 4,     'rb', 'find_opentype_file_callback', 'read_opentype_file_callback'},
-  pk       = {'pk',             4,     'rb', 'find_pk_file_callback',       'read_pk_file_callback'},
-  enc      = {'enc files',      false, 'rb', 'find_enc_file_callback',      'read_enc_file_callback'},
-  image    = {'tex',            3,     'rb', 'find_image_file_callback',    'read_image_file_callback'},
-  data     = {'tex',            1,     'rb', 'find_data_file_callback',     'read_data_file_callback'},
+  vf       = {'vf',             false, 'rb', 'find_vf_file',       'read_vf_file'},
+  tfm      = {'tfm',            false, 'rb', 'find_font_file',     'read_font_file'},
+  map      = {'map',            2,     'rb', 'find_map_file',      'read_map_file'},
+  enc      = {'enc',            false, 'rb', 'find_enc_file',      'read_enc_file'},
+  type1    = {'type1 fonts',    4,     'rb', 'find_type1_file',    'read_type1_file'},
+  truetype = {'truetype fonts', 4,     'rb', 'find_truetype_file', 'read_truetype_file'},
+  opentype = {'opentype fonts', 4,     'rb', 'find_opentype_file', 'read_opentype_file'},
+  pk       = {'pk',             4,     'rb', 'find_pk_file',       'read_pk_file'},
+  enc      = {'enc files',      false, 'rb', 'find_enc_file',      'read_enc_file'},
+  image    = {'tex',            3,     'rb', 'find_image_file',    'read_image_file'},
+  data     = {'tex',            1,     'rb', 'find_data_file',     'read_data_file'},
 }
 
 local start_categories = { [0] = '?', '(', '{', '<', '<', '<<' }

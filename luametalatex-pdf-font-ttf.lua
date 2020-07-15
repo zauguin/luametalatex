@@ -18,11 +18,11 @@ local function addglyph(glyph, usedcids, cidtogid)
       local flags, component = string.unpack(">I2I2", glyph, offset)
       local gid = cidtogid[component]
       if not gid then
-        gid = #usedcids
-        usedcids[gid+1] = {component}
+        gid = #usedcids+1
+        usedcids[gid] = {component}
         cidtogid[component] = gid
       end
-      glyph = glyph:sub(1, offset+1) .. string.pack(">I2", gid).. glyph:sub(offset+4)
+      glyph = glyph:sub(1, offset+1) .. string.pack(">I2", gid-1).. glyph:sub(offset+4)
       offset = flags&32==32 and offset + 4 + (flags&1==1 and 4 or 2) + (flags&8==8 and 2 or (flags&64==64 and 4 or (flags&128==128 and 8 or 0)))
     end
   end
@@ -69,7 +69,7 @@ local function readpostnames(buf, i, usedcids, encoding)
   return newusedcids
 end
 return function(filename, fontid, reencode)
-  local file <close> = readfile('truetype', filename)
+  local file <close> = assert(readfile('truetype', filename))
   local buf = file()
   local magic, tables = sfnt.parse(buf, 1, fontid)
   if magic ~= "\0\1\0\0" then error[[Invalid TTF font]] end
