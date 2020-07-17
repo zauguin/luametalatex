@@ -19,7 +19,7 @@ do
   for _, a in ipairs(arg) do
     local name, value = arg_pattern:match(a)
     if name then
-      arg[name] = value
+      arg[name] = math.tointeger(value) or value
     end
   end
 end
