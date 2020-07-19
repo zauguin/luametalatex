@@ -15,6 +15,17 @@ pdf = {
 require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before callbacks
 require'luametalatex-basecallbacks'
 
+local primitives = {}
+do
+  local token_primitives = token.primitives()
+  local token_new = token.new
+  for i=1,#token_primitives do
+    local prim = token_primitives[i]
+    primitives[prim[3]] = token_new(prim[2], prim[1])
+  end
+end
+token.primitive_tokens = primitives
+
 local functions = lua.getfunctionstable()
 -- I am not sure why this is necessary, but otherwise LuaMetaTeX resets
 -- the functions table every time the getter is called
