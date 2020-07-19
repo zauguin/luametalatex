@@ -5,26 +5,43 @@ if os.selfarg[0] == ourname then
   ourname = nil
 end
 local run
+
+local arg_pattern, late_arg_pattern do
+  local l = lpeg or require'lpeg'
+  -- We intepret two arguments directly
+  local early_args = 'run' * l.Cmt(l.P'=' + -1, function() run = true return true end)
+                   + 'progname=' * l.Cmt(0, function(s, off) format = s:sub(off) return true end)
+  -- LuaMetaTeX needs -- to introduce parameters,
+  -- but fmtutil uses just -. Let's rewrite this on the fly:
+  local maybe_option = ('-' * ('-' + l.Cc'-') * #(early_args^-1))^-1
+  local quote = l.Cc(WINDOWS and '"' or "'")
+  local escape
+  if WINDOWS then
+    -- Windows: " -> "^"" The ^ is for cmd escaping, the """ is for command line splitting escaping,
+    -- backslashes still have to be escaped, but only in front of " or \
+    -- WARNING: This works with luametatex's argument splitting, but don't generally rely
+    -- on it for other Windows programs. There are two standard Windows ways which are incompatible...
+    escape = '\\' * #l.S'\\"' * l.Cc'\\' + '"' * l.Cc'^""' + 1
+  else
+    -- POSIX: We escape with single quotes, so only single quotes need escaping
+    escape = "'" * l.Cc"\\''" + 1
+  end
+  arg_pattern = l.Cs(l.Cc' ' * maybe_option * quote * escape^0 * quote)
+  late_arg_pattern = l.Cs(l.Cc' ' * quote * escape^0 * quote)
+end
+
 for i, a in ipairs(os.selfarg) do
   if a == ourname then -- Avoid recursion
     table.remove(os.selfarg, i)
     ourname = nil
     a = os.selfarg[i]
   end
-  if a == "--" then break end -- This convention is not respected by luametatex itself
-  -- LuaMetaTeX needs -- to introduce parameters,
-  -- but fmtutil uses just -. Let's rewrite this on the fly:
-  a = a:gsub("^%-%-?", "--")
-  os.selfarg[i] = a
-  if a:sub(1, 11) == "--progname=" then
-    format = a:sub(12)
-  end
-  if a:sub(1, 6) == "--run=" then
-    run = true
-  end
+  if a == "--" then arg_pattern = late_arg_pattern end -- This convention is not respected by luametatex itself
+  os.selfarg[i] = arg_pattern:match(a)
 end
 os.setenv("engine", status.luatex_engine)
-local kpse_call = io.popen(string.format("kpsewhich -progname %s -format lua -all -must-exist %s-init.lua", format, format))
+
+local kpse_call = io.popen(string.format("kpsewhich -progname%s -format lua -all -must-exist%s-init.lua", late_arg_pattern:match(format), late_arg_pattern:match(format)))
 local file
 repeat
   file = kpse_call:read()
@@ -40,12 +57,13 @@ else
   function geterrorcode(ec) return ec & 0xFF == 0 and ec >> 8 or 0xFF end
 end
 
-local args = os.selfarg[1] and " \"" .. table.concat(os.selfarg, "\" \"") .. "\"" or ""
-if run then -- The user wants to take care of it
-  os.exit(geterrorcode(os.execute(string.format("luametatex \"--lua=%s\" --arg0=\"%s\"%s", file, os.selfarg[0], args))))
+local firstargs = string.format("luametatex%s%s", late_arg_pattern:match('--lua=' .. file), late_arg_pattern:match('--arg0=' .. os.selfarg[0]))
+local args = table.concat(os.selfarg)
+if run then -- The user wants to take care of everything
+  os.exit(geterrorcode(os.execute(firstargs .. args)))
 else
   for i = 1, 5 do
-    local status = geterrorcode(os.execute(string.format("luametatex \"--lua=%s\" --arg0=\"%s\" --run=%i%s", file, os.selfarg[0], i, args)))
+    local status = geterrorcode(os.execute(string.format("%s --run=%i%s", firstargs, i, args)))
     if status ~= 75 then
       os.exit(status)
     end
