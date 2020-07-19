@@ -9,13 +9,12 @@ local callbacks = require'luametalatex-callbacks'
 local our_callbacks = {
   vf       = {'vf',             false, 'rb', 'find_vf_file',       'read_vf_file'},
   tfm      = {'tfm',            false, 'rb', 'find_font_file',     'read_font_file'},
-  map      = {'map',            2,     'rb', 'find_map_file',      'read_map_file'},
-  enc      = {'enc',            false, 'rb', 'find_enc_file',      'read_enc_file'},
+  map      = {'map',            2,     'r',  'find_map_file',      'read_map_file'},
+  enc      = {'enc',            false, 'r',  'find_enc_file',      'read_enc_file'},
   type1    = {'type1 fonts',    4,     'rb', 'find_type1_file',    'read_type1_file'},
   truetype = {'truetype fonts', 4,     'rb', 'find_truetype_file', 'read_truetype_file'},
   opentype = {'opentype fonts', 4,     'rb', 'find_opentype_file', 'read_opentype_file'},
   pk       = {'pk',             4,     'rb', 'find_pk_file',       'read_pk_file'},
-  enc      = {'enc files',      false, 'rb', 'find_enc_file',      'read_enc_file'},
   image    = {'tex',            3,     'rb', 'find_image_file',    'read_image_file'},
   data     = {'tex',            1,     'rb', 'find_data_file',     'read_data_file'},
 }
