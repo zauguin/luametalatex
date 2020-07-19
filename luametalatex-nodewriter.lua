@@ -375,46 +375,48 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
   end
 end
 
+local vf_state
+
 local pdf_escape = require'luametalatex-pdf-escape'.escape_raw
 local match = lpeg.match
-local function do_commands(p, c, f, fid, x, y, outer, ...)
+local function do_commands(p, c, f, cid, fid, x, y, outer, x0, level, direction)
   local fonts = f.fonts
-  local stack, current_font = {}, fonts[1]
+  local stack, current_font = {}, fonts and fonts[1] and fonts[1].id or fid
   for _, cmd in ipairs(c.commands) do
     if cmd[1] == "node" then
       local cmd = cmd[2]
       assert(node.type(cmd))
       cmd = todirect(cmd)
-      nodehandler[getid(cmd)](p, cmd, x, y, nil, ...)
+      nodehandler[getid(cmd)](p, cmd, x, y, outer, x0, level, direction)
       x = x + getwidth(cmd)
     elseif cmd[1] == "font" then
-      current_font = assert(fonts[cmd[2]], "invalid font requested")
+      current_font = assert(fonts[cmd[2]], "invalid font requested").id
     elseif cmd[1] == "char" then
       local n = direct.new'glyph'
       setsubtype(n, 256)
-      setfont(n, current_font.id, cmd[2])
-      nodehandler.glyph(p, n, x, y, outer, ...)
+      setfont(n, current_font, cmd[2])
+      nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
       x = x + getwidth(n)
       direct.free(n)
     elseif cmd[1] == "slot" then
-      current_font = assert(fonts[cmd[2]], "invalid font requested")
+      current_font = assert(fonts[cmd[2]], "invalid font requested").id
       local n = direct.new'glyph'
       setsubtype(n, 256)
-      setfont(n, current_font.id, cmd[3])
-      nodehandler.glyph(p, n, x, y, outer, ...)
+      setfont(n, current_font, cmd[3])
+      nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
       x = x + getwidth(n)
       direct.free(n)
     elseif cmd[1] == "rule" then
       local n = direct.new'rule'
-      setheight(n, cmd[2])
-      setwidth(n, cmd[3])
-      nodehandler.rule(p, n, x, y, outer, ...)
+      setheight(n, cmd[3])
+      setwidth(n, cmd[2])
+      nodehandler.rule(p, n, x, y, outer, x0, level, direction)
       x = x + getwidth(n)
       direct.free(n)
-    elseif cmd[1] == "left" then
+    elseif cmd[1] == "right" then
       x = x + cmd[2]
     elseif cmd[1] == "down" then
-      y = y + cmd[2]
+      y = y - cmd[2] -- TODO: Review sign
     elseif cmd[1] == "push" then
       stack[#stack + 1] = {x, y}
     elseif cmd[1] == "pop" then
@@ -424,12 +426,18 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
     elseif cmd[1] == "special" then
       error[[specials aren't supported yet]] -- TODO
     elseif cmd[1] == "pdf" then
-      pdf.write(cmd[3] and cmd[2] or "origin", cmd[3], x, y, p)
+      local mode, literal = cmd[2], cmd[3]
+      if not literal then mode, literal = "origin", mode end
+      pdf.write(mode, literal, x, y, p)
     elseif cmd[1] == "lua" then
       cmd = cmd[2]
       if type(cmd) == "string" then cmd = load(cmd) end
       assert(type(cmd) == "function")
-      pdf._latelua(p, x, y, cmd, fid, c)
+      local old_vf_state = vf_state -- This can be triggered recursivly in odd cases
+      vf_state = {p, stack, current_font, x, y, outer, x0, level, direction}
+      pdf._latelua(p, x, y, cmd, fid, cid)
+      current_font, x, y = vf_state[3], vf_state[4], vf_state[5]
+      vf_state = old_vf_state
     elseif cmd[1] == "image" then
       error[[images aren't supported yet]] -- TODO
       -- ???
@@ -438,18 +446,75 @@ local function do_commands(p, c, f, fid, x, y, outer, ...)
     end
   end
 end
+-- Now we basically duplicate all of that for the `vf` library...
+vf = {
+  char = function(cid)
+    local n = direct.new'glyph'
+    setsubtype(n, 256)
+    setfont(n, vf_state[3], cid)
+    local x = vf_state[4]
+    nodehandler.glyph(vf_state[1], n, x, vf_state[5], vf_state[6], vf_state[7], vf_state[8], vf_state[9])
+    vf_state[4] = x + getwidth(n)
+    direct.free(n)
+  end,
+  down = function(dy)
+    vf_state[5] = vf_state[5] - dy -- TODO: Review sign
+  end,
+  fontid = function(fid)
+    vf_state[3] = fid
+  end,
+  -- image = function(img) -- TODO
+  node = function(n)
+    assert(node.type(n))
+    cmd = todirect(n)
+    local x = vf_state[4]
+    nodehandler[getid(n)](vf_state[1], n, x, vf_state[5], vf_state[6], vf_state[7], vf_state[8], vf_state[9])
+    vf_state[4] = x + getwidth(n)
+  end,
+  nop = function() end,
+  pop = function()
+    local stack = vf_state[2]
+    local top = stack[#stack]
+    stack[#stack] = nil
+    vf_state[4], vf_state[5] = top[1], top[2]
+  end,
+  push = function()
+    local stack = vf_state[2]
+    stack[#stack + 1] = vf_state[4], vf_state[5]
+  end,
+  right = function(dx)
+    vf_state[4] = vf_state[4] + dx
+  end,
+  rule = function(width, height)
+    local n = direct.new'rule'
+    setheight(n, height)
+    setwidth(n, width)
+    local x = vf_state[4]
+    nodehandler.rule(vf_state[1], n, x, vf_state[5], vf_state[6], vf_state[7], vf_state[8], vf_state[9])
+    vf_state[4] = x + getwidth(n)
+    direct.free(n)
+  end,
+  special = function()
+    error[[specials aren't supported yet]] -- TODO
+  end,
+  pdf = function(mode, literal)
+    if not literal then mode, literal = "origin", mode end
+    pdf.write(mode, literal, vf_state[4], vf_state[5], vf_state[1])
+  end,
+}
 function nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
   if getfont(n) ~= p.vfont.fid then
     p.vfont.fid = getfont(n)
     p.vfont.font = font.getfont(getfont(n)) or font.fonts[getfont(n)]
   end
   local f, fid = p.vfont.font, p.vfont.fid
-  local c = f.characters[getchar(n)]
+  local cid = getchar(n)
+  local c = f.characters[cid]
   if not c then
     texio.write_nl("Missing character")
     return
   end
-  if c.commands then return do_commands(p, c, f, fid, x, y, outer, x0, level, direction) end
+  if c.commands then return do_commands(p, c, f, cid, fid, x, y, outer, x0, level, direction) end
   local xoffset, yoffset = getoffsets(n)
   toglyph(p, getfont(n), x + (direction == 1 and -xoffset or xoffset), y + yoffset, getexpansion(n))
   local index = c.index
