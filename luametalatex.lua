@@ -14,9 +14,9 @@ local arg_pattern, late_arg_pattern do
   -- LuaMetaTeX needs -- to introduce parameters,
   -- but fmtutil uses just -. Let's rewrite this on the fly:
   local maybe_option = ('-' * ('-' + l.Cc'-') * #(early_args^-1))^-1
-  local quote = l.Cc(WINDOWS and '"' or "'")
+  local quote = l.Cc(os.type == 'windows' and '"' or "'")
   local escape
-  if WINDOWS then
+  if os.type == 'windows' then
     -- Windows: " -> "^"" The ^ is for cmd escaping, the """ is for command line splitting escaping,
     -- backslashes still have to be escaped, but only in front of " or \
     -- WARNING: This works with luametatex's argument splitting, but don't generally rely
