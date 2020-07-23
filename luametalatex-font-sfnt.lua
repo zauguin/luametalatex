@@ -41,7 +41,7 @@ return {
   write = function(magic, tables)
     local tabdata = {}
     for t, val in next, tables do
-      tabdata[#tabdata+1] = {t, val .. string.rep("\0", (#val+3&~3)-#val), #val}
+      tabdata[#tabdata+1] = {string.format("%-4s", t), val .. string.rep("\0", (#val+3&~3)-#val), #val}
     end
     table.sort(tabdata, function(a,b)return a[1]<b[1]end)
     local logtabs = log2floor(#tabdata)

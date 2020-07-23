@@ -19,9 +19,11 @@ local arg_pattern, late_arg_pattern do
   if os.type == 'windows' then
     -- Windows: " -> "^"" The ^ is for cmd escaping, the """ is for command line splitting escaping,
     -- backslashes still have to be escaped, but only in front of " or \
+    -- Additionally, "%" always as to be escaped for some variable substitution
+    -- pass before everything else.
     -- WARNING: This works with luametatex's argument splitting, but don't generally rely
     -- on it for other Windows programs. There are two standard Windows ways which are incompatible...
-    escape = '\\' * #l.S'\\"' * l.Cc'\\' + '"' * l.Cc'^""' + 1
+    escape = '\\' * #l.S'\\"' * l.Cc'\\' + '"' * l.Cc'^""' + '%' * l.Cc'%' + 1
   else
     -- POSIX: We escape with single quotes, so only single quotes need escaping
     escape = "'" * l.Cc"\\''" + 1
@@ -45,7 +47,8 @@ local kpse_call = io.popen(string.format("kpsewhich -progname%s -format lua -all
 local file
 repeat
   file = kpse_call:read()
-until not file:match('^%.')
+until not assert(file, "Unable to find initialization script. Aborting."):match('^%.')
+
 if not kpse_call:close() then
   error(file)
 end
