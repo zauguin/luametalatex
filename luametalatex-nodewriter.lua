@@ -168,7 +168,7 @@ end
 
 local function boxrotation(p, list, x, y)
   local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
-  if not orientation then return x, y, getwidth(list) end
+  if not orientation then return x, y, direct.getwhd(list) end
   x, y = x + xoff, y + yoff
   local baseorientation = orientation & 0xF
   local v_anchor = (orientation & 0xF0) >> 4
@@ -205,9 +205,7 @@ local function boxrotation(p, list, x, y)
     end
     if flipped then
       write_matrix(-1, 0, 0, -1, 2*x, 2*y, p)
-      return x - woff, y, woff
-    else
-      return x, y, woff
+      x, y = x - woff, y
     end
   else -- vertical
     if v_anchor == 0 then
@@ -240,12 +238,13 @@ local function boxrotation(p, list, x, y)
     end
     if flipped then
       write_matrix(0, 1, -1, 0, x+y, y-x, p)
-      return x, y - hoff, woff
+      x, y = x, y - hoff
     else
       write_matrix(0, -1, 1, 0, x-y, x+y, p)
-      return x - woff, y + doff, woff
+      x, y = x - woff, y + doff
     end
   end
+  return x, y, woff, hoff, doff
 end
 
 local function endboxrotation(p, list, x, y)
@@ -358,8 +357,10 @@ function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
       x = x + getshift(list)
     end
   end
-  y0 = y0 + getheight(list)
+  local width, height
+  x, y0, width, height = boxrotation(p, list, x, y0)
   local y = y0
+  y = y + height
   for n in traverse(getlist(list)) do
     local d, h, _ = 0, direct.effective_glue(n, list) or math.tointeger(getkern(n))
     if not h then
@@ -369,6 +370,7 @@ function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
     nodehandler[getid(n)](p, n, x, (y+.5)//1, list, y0, level+1)
     y = y - (d or 0)
   end
+  endboxrotation(p, list, x, y0)
 end
 do
 local rulesubtypes = {}
