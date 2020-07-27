@@ -30,6 +30,7 @@ local getchar = direct.getchar
 local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
 local getdata = direct.getdata
+local getorientation = direct.getorientation
 
 local utils = require'luametalatex-pdf-utils'
 local strip_floats = utils.strip_floats
@@ -38,6 +39,8 @@ local to_bp = utils.to_bp
 local make_resources = require'luametalatex-pdf-resources'
 local pdf_font_map = require'luametalatex-pdf-font-deduplicate'
 local get_whatsit_handler = require'luametalatex-whatsits'.handler
+
+local write_matrix -- Defined later
 
 local dir_id = node.id'dir'
 
@@ -162,6 +165,114 @@ local function toglyph(p, fid, x, y, exfactor)
   p.mode = glyph
   p.pending[1] = "[("
 end
+
+local function boxrotation(p, list, x, y)
+  local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
+  if not orientation then return x, y, getwidth(list) end
+  x, y = x + xoff, y + yoff
+  local baseorientation = orientation & 0xF
+  local v_anchor = (orientation & 0xF0) >> 4
+  local h_anchor = (orientation & 0xF00) >> 8
+  -- assert(baseorientation & 8 == 0)
+  if baseorientation & 4 == 4 then
+    -- assert(baseorientation < 6)
+    baseorientation, v_anchor = 0, baseorientation - 3
+  end
+  if baseorientation & 1 == 0 then -- horizontal
+    if h_anchor == 0 then
+    elseif h_anchor == 1 then
+      x = x - woff
+    elseif h_anchor == 2 then
+      x = x + woff
+    elseif h_anchor == 3 then
+      x = x - woff//2
+    elseif h_anchor == 4 then
+      x = x + woff//2
+    -- else assert(false)
+    end
+    local flipped = baseorientation ~= 0
+    if v_anchor ~= 0 then
+      local h, d = hoff, doff
+      if flipped then h, d = d, h end
+      if v_anchor == 1 then
+        y = y + d
+      elseif v_anchor == 2 then
+        y = y - h
+      elseif v_anchor == 3 then
+        y = y + (d - h)//2
+    -- else assert(false)
+      end
+    end
+    if flipped then
+      write_matrix(-1, 0, 0, -1, 2*x, 2*y, p)
+      return x - woff, y, woff
+    else
+      return x, y, woff
+    end
+  else -- vertical
+    if v_anchor == 0 then
+    elseif v_anchor == 1 then
+      y = y + woff
+    elseif v_anchor == 2 then
+      y = y - woff
+    elseif v_anchor == 3 then
+      y = y - woff//2
+    -- else assert(false)
+    end
+    local flipped = baseorientation ~= 1
+    if h_anchor ~= 0 then
+      local h, d = hoff, doff
+      if flipped then h, d = d, h end
+      if h_anchor == 1 then
+        x = x - h - d
+      elseif h_anchor == 2 then
+        x = x + h + d
+      elseif h_anchor == 3 then
+        x = x - (d + h)//2
+      elseif h_anchor == 4 then
+        x = x + (d + h)//2
+      elseif h_anchor == 5 then
+        x = x - d
+      elseif h_anchor == 6 then
+        x = x + h
+    -- else assert(false)
+      end
+    end
+    if flipped then
+      write_matrix(0, 1, -1, 0, x+y, y-x, p)
+      return x, y - hoff, woff
+    else
+      write_matrix(0, -1, 1, 0, x-y, x+y, p)
+      return x - woff, y + doff, woff
+    end
+  end
+end
+
+local function endboxrotation(p, list, x, y)
+  local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
+  if not orientation then return end
+  local orientation = orientation & 0xF
+  -- assert(orientation & 8 == 0)
+  if orientation & 4 == 4 or orientation == 0 then
+    -- write_matrix(1, 0, 0, 1, 0, 0, p)
+  elseif orientation == 1 then
+    x, y = x + woff, y - doff
+    write_matrix(0, 1, -1, 0, x+y, y-x, p)
+  elseif orientation == 2 then
+    x = x + woff
+    write_matrix(-1, 0, 0, -1, 2*x, 2*y, p)
+  elseif orientation == 3 then
+    y = y + hoff
+    write_matrix(0, -1, 1, 0, x-y, x+y, p)
+  elseif orientation == 4 then
+    error[[TODO]] -- FIXME
+    write_matrix(1, 0, 0, 1, 0, 0, p)
+  elseif orientation == 5 then
+    error[[TODO]] -- FIXME
+    write_matrix(1, 0, 0, 1, 0, 0, p)
+  end
+end
+
 -- Let's start with "handlers" for nodes which do not need any special handling:
 local function ignore_node() end
 -- The following are already handled by the list handler because they only correspond to blank space:
@@ -182,9 +293,12 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
       x0 = x0 + getshift(list)
     end
   end
+  local width
+  x0, y, width = boxrotation(p, list, x0, y)
+  local x = x0
   local direction = getdirection(list)
   if direction == 1 then
-    x0 = x0 + getwidth(list)
+    x = x + width
   end
   local dirstack = {}
   local dirnodes = {}
@@ -200,7 +314,6 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
   for i=1,#dirstack do
     dirnodes[dirstack[i]] = rangedimensions(list, dirstack[i])
   end
-  local x = x0
   local linkcontext = p.linkcontext
   if linkcontext then
     linkcontext:set(p, x, y, list, level+1, 'start')
@@ -235,6 +348,7 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
   if linkcontext then
     linkcontext:set(p, x, y, list, level+1, 'end')
   end
+  endboxrotation(p, list, x0, y)
 end
 function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
   if outerlist then
@@ -555,7 +669,7 @@ function pdf._latelua(p, x, y, func, ...)
   global_p, global_x, global_y = p, x, y
   return func(...)
 end
-function pdf.write_matrix(a, b, c, d, e, f, p)
+function write_matrix(a, b, c, d, e, f, p)
   e, f, p = e or 0, f or 0, p or global_p
   local pending = p.pending_matrix
   if p.mode ~= cm_pending then
@@ -568,7 +682,7 @@ function pdf.write_matrix(a, b, c, d, e, f, p)
   end
   pending[1], pending[2], pending[3], pending[4], pending[5], pending[6] = a, b, c, d, e, f
 end
-local write_matrix = pdf.write_matrix
+pdf.write_matrix = write_matrix
 local literal_type_names = { [0] =
   'origin', 'page', 'direct', 'raw', 'text'
 }
