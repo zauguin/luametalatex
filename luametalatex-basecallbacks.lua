@@ -43,7 +43,6 @@ do
     callback_register('find_data_file', normal_find_data_file)
   end
 end
--- callback_register('read_data_file', function(name) error[[TODO]]return kpse.find_file(name, 'tex', true) end)
 callback_register('open_data_file', function(name)
   local f = io.open(name, 'r')
   return setmetatable({
