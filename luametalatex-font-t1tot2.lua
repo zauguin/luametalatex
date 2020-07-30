@@ -40,7 +40,7 @@ local function parse_charstring(cs, subrs, result)
         elseif cmd == 1 then -- Flex initialization
         elseif cmd == 2 then -- Flex parameter
           if result[#result-1].flex then
-            result[#result] = nil -- TODO: Warn if there were values. 
+            result[#result] = nil -- TODO: Warn if there were additional values in lastresult. 
             lastresult = result[#result] -- We keep collecting arguments
           end
           lastresult.flex = true
@@ -64,14 +64,51 @@ local function parse_charstring(cs, subrs, result)
             pending[i] = lastresult[results-numargs+i]
             lastresult[results-numargs+i] = nil
           end
-          for i = 1,#lastresult.pendingargs do
-            pending[numargs+i] = lastresult.pendingargs[i]
+          if lastresult.pendingargs then
+            for i = 1,#lastresult.pendingargs do
+              pending[numargs+i] = lastresult.pendingargs[i]
+            end
           end
           if cmd == 12 then
             lastresult.pendingargs = pending
           else
             lastresult.pendingargs = nil
-            -- TODO Translate pending to counter mask
+            local n = pending[1]
+            local i = 2
+            local groups = {}
+            for group = 1, n do
+              local current = {20}
+              local last = 0
+              while pending[i+1] > 0 do
+                last = last + pending[i]
+                current[#current+1] = {1, last, pending[i+1]}
+                last = last + pending[i+1]
+                i = i+2
+              end
+              last = last + pending[i]
+              current[#current+1] = {1, last + pending[i+1], -pending[i+1]}
+              groups[group] = current
+              i = i+2
+            end
+            n = pending[i]
+            i = i+1
+            for group = 1, n do
+              local current = groups[group] or {20}
+              local last = 0
+              while pending[i+1] > 0 do
+                last = last + pending[i]
+                current[#current+1] = {3, last, pending[i+1]}
+                last = last + pending[i+1]
+                i = i+2
+              end
+              last = last + pending[i]
+              current[#current+1] = {3, last + pending[i+1], -pending[i+1]}
+              groups[group] = current
+              i = i+2
+            end
+            assert(i == #pending+1)
+            table.move(groups, 1, #groups, #result, result) -- This overwrites lastresult
+            result[#result+1] = lastresult -- And restore lastresult
           end
         else
           error[[UNSUPPORTED Othersubr]]
@@ -132,12 +169,12 @@ local function adjust_charstring(cs) -- Here we get a not yet optimized but pars
   cs[1][1] = nil
   -- That's it for the width, now we need some hinting stuff. This would be easy, if hint replacement
   -- wouldn't require hint masks in Type2. And because we really enjoy this BS, we get counter
-  -- hinting as an additional treat... Oh, if you actually you counter hinting: Please test this
+  -- hinting as an additional treat... Oh, if you actually use counter hinting: Please test this
   -- and report back if it works, because this is pretty much untested.
-  -- TODO: Even more than that, counters are not implemented at all right now, except for [hv]stem3
   local stems = {}
-  local stem3 = {}
-  -- First iterate over the charstring, recording all hints and collecting them in stems/stem3
+  local stem3 = {20}
+  local cntrs = {}
+  -- First iterate over the charstring, recording all hints and collecting them in stems/stem3/cntrs
   for i, cmd in ipairs(cs) do
     if cmd[1] == 1 or cmd[1] == 3 then
       stems[#stems + 1] = cmd
@@ -148,6 +185,9 @@ local function adjust_charstring(cs) -- Here we get a not yet optimized but pars
       stems[#stems + 1] = {c, cmd[6], cmd[7]}
       table.move(stems, #stems-2, #stems, #stem3+1, stem3)
       cs[i] = false
+    elseif cmd[1] == 20 then
+      cntrs[#cntrs+1] = cmd
+      table.move(cmd, 2, #cmd, #stems+1, stems)
     end
   end
   table.sort(stems, function(first, second)
@@ -168,18 +208,25 @@ local function adjust_charstring(cs) -- Here we get a not yet optimized but pars
       stems[i].idx = j
     end
   end
-  -- Now the indices are known, so the cntrmask can be written, if stem3 occured.
+  -- Now the indices are known, so the cntrmask can be written, if counters or stem3 occured.
   -- This is done before writing the stem list to make the thable.insert parameters easier.
+  -- First translate stem3 into a counter group
+  if stem3[2] then
+    cntrs[#cntrs+1] = stem3
+    table.insert(cs, 2, stem3)
+  end
   local bytes = {}
-  if stem3[1] then
-      for l = 1, math.floor((j + 7)/8) do
-        bytes[l] = 0
-      end
-    for l = 1, #stem3 do
-      local idx = stem3[l].idx-1
-      bytes[math.floor(idx/8) + 1] = bytes[math.floor(idx/8) + 1] | (1<<(7-idx%8))
+  for i=1, #cntrs do
+    local cntr = cntrs[i]
+    for l = 1, math.floor((j + 7)/8) do
+      bytes[l] = 0
     end
-    table.insert(cs, 2, {20, string.char(table.unpack(bytes))})
+    for l = 2, #cntr do
+      local idx = cntr[l].idx-1
+      bytes[math.floor(idx/8) + 1] = bytes[math.floor(idx/8) + 1] | (1<<(7-idx%8))
+      cntr[l] = nil
+    end
+    cntr[2] = string.char(table.unpack(bytes))
   end
   local current = 1
   -- Then list the collected stems at the beginning of the charstring
@@ -220,7 +267,7 @@ local function adjust_charstring(cs) -- Here we get a not yet optimized but pars
         cs[i] = false
         i = i+1
       end
-      for l = 1, #stem3 do
+      for l = 2, #stem3 do
         local idx = stem3[l].idx-1
         bytes[math.floor(idx/8) + 1] = bytes[math.floor(idx/8) + 1] | (1<<(7-idx%8))
       end
