@@ -283,33 +283,29 @@ local function get_action_attr(p, action, is_link)
   if action_type == 2 then
     error[[FIXME: Threads are currently unsupported]] -- TODO
   elseif action_type == 0 then
-    error[[FIXME]]
-  elseif action_type == 1 then -- GoTo
-    local id = action.id
-    if id then
-      if file then
-        assert(type(id) == "string")
-        action_attr = action_attr .. "/S/GoToR/D" .. pdf_bytestring(id) .. ">>"
-      else
-        local dest = dests[id]
-        if not dest then
-          dest = pfile:getobj()
-          dests[id] = dest
-        end
-        if type(id) == "string" then
-          action_attr = action_attr .. "/S/GoTo/D" .. pdf_bytestring(id) .. ">>"
-        else
-          action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
-        end
-      end
+    local page = assert(action.page, 'Page action must contain a page')
+    local tokens = action.tokens
+    if file then
+      action_attr = string.format("%s/S/GoToR/D[%i %s]>>", action_attr, page-1, tokens)
     else
-      id = assert(action.page, 'GoTo action must contain either an id or a page')
-      local tokens = action.tokens
-      if file then
-        action_attr = string.format("%s/S/GoToR/D[%i %s]>>", action_attr, id-1, tokens)
+      local page_objnum = pfile:reservepage(page)
+      action_attr = string.format("%s/S/GoTo/D[%i 0 R %s]>>", action_attr, page_objnum, tokens)
+    end
+  elseif action_type == 1 then -- GoTo
+    local id = assert(action.id, 'GoTo action must contain an id')
+    if file then
+      assert(type(id) == "string")
+      action_attr = action_attr .. "/S/GoToR/D" .. pdf_bytestring(id) .. ">>"
+    else
+      local dest = dests[id]
+      if not dest then
+        dest = pfile:getobj()
+        dests[id] = dest
+      end
+      if type(id) == "string" then
+        action_attr = action_attr .. "/S/GoTo/D" .. pdf_bytestring(id) .. ">>"
       else
-        local page_objnum = pfile:reservepage(id)
-        action_attr = string.format("%s/S/GoTo/D[%i 0 R %s]>>", action_attr, page_objnum, tokens)
+        action_attr = string.format("%s/S/GoTo/D %i 0 R>>", action_attr, dest)
       end
     end
   end
@@ -587,9 +583,10 @@ local function scan_action()
   }
   if token.scan_keyword'page' then
     assert(action_type == 1)
+    action_type = 0
     local page = token.scan_int()
     if page <= 0 then
-      error[[page must be positive in action specified]]
+      error[[page must be positive in action specification]]
     end
     action.page = page
     action.tokens = token.scan_string()
