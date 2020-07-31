@@ -128,7 +128,8 @@ pdf_variable(dimen_code, token.scan_dimen, 'horigin', tex.sp'1in')
 pdf_variable(dimen_code, token.scan_dimen, 'vorigin', tex.sp'1in')
 pdf_variable(dimen_code, token.scan_dimen, 'linkmargin', tex.sp'0pt')
 pdf_variable(dimen_code, token.scan_dimen, 'destmargin', tex.sp'0pt')
-pdf_variable(dimen_code, token.scan_dimen, 'threadmargin', tex.sp'0pt') -- We don't support threads, so this isn't doing anything
+pdf_variable(dimen_code, token.scan_dimen, 'xformmargin', tex.sp'0pt')
+pdf_variable(dimen_code, token.scan_dimen, 'threadmargin', tex.sp'0pt', true) -- We don't support threads, so this isn't doing anything
 pdf_variable(count_code, token.scan_int, 'majorversion', 1)
 pdf_variable(count_code, token.scan_int, 'minorversion', 7)
 pdf_variable(count_code, token.scan_int, 'compresslevel', 9)

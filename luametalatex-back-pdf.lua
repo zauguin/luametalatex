@@ -892,7 +892,7 @@ function tex.saveboxresource(n, attr, resources, immediate, type, margin, pfile)
     token.put_next(token.create'box', token.new(n, token.command_id'char_given'))
     n = token.scan_list()
   end
-  margin = margin or tex.sp'1bp' -- FIXME: default margin variable
+  margin = margin or pdfvariable.xformmargin
   return savedbox_save(pfile or get_pfile(), n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
 end
 tex.useboxresource = savedbox.use
