@@ -501,8 +501,7 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
     parse_fdselect(buf, i0+top.FDSelect, CharStrings)
   end
   local glyphs = {}
-  -- if false and usedcids then -- Subsetting FIXME: Disabled, because other tables have to be fixed up first
-  if usedcids then -- Subsetting FIXME: Should be Disabled, because other tables have to be fixed up first -- Actually seems to work now, let's test it a bit more
+  if usedcids then -- Subsetting maybeFIXME: Should be Disabled, because other tables have to be fixed up first -- Actually seems to work now, let's test it a bit more
     local usedfonts = {}
     for i=1,#usedcids do
       local cid = usedcids[i][1]
@@ -524,14 +523,13 @@ function myfunc(buf, i0, fontid, usedcids, encoding, trust_widths)
     for i=1,#glyphs do
       glyphs[i].cidfont = usedfonts[glyphs[i].cidfont]
     end
-    -- TODO: CIDFont / Privates subsetting... DONE(?)
-    -- TODO: Subrs subsetting... Instead of deleting unused SubRs, we only make them empty.
-    --       This avoids problems with renumberings whiuch would have to be consitant across
-    --       Fonts in some odd way, because they might be used by globalsubrs.
+    -- Subrs subsetting... Instead of deleting unused SubRS, we only make them empty.
+    -- This avoids problems with renumberings which would have to be consitant across
+    -- Fonts in some odd way, because they might be used by globalsubrs.
     for i=1,#glyphs do
       local g = glyphs[i]
       local private = top.Privates[g.cidfont or 1]
-      local parsed = parse_charstring(g.cs, top.GlobalSubrs, private.Subrs) -- TODO: Implement
+      local parsed = parse_charstring(g.cs, top.GlobalSubrs, private.Subrs)
       local width = parsed[1][2]
       if width then
         width = width + (private.nominalWidthX or 0)

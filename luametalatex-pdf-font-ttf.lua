@@ -73,14 +73,6 @@ return function(filename, fontid, reencode)
   local buf = file()
   local magic, tables = sfnt.parse(buf, 1, fontid)
   if magic ~= "\0\1\0\0" then error[[Invalid TTF font]] end
-  -- TODO: Parse post table and add reencoding support
-  -- if tables.post and string.unpack(">I4", buf, tables.post[1]) == 0x00020000 and reencode then
-  --   local encoding = require'parseEnc'(reencode)
-  --   if encoding then
-  --     local names = {}
-  --     local off = tables.post[1] + 4
-  --     for i = 1,string.unpack(">I2", buf, tables.maxp[1] + 4) do
-
   return function(fontdir, usedcids)
     if reencode and string.unpack(">I4", buf, tables.post[1]) == 0x00020000 then
       usedcids = readpostnames(buf, tables.post[1] + 32, usedcids, require'luametalatex-font-enc'(reencode))

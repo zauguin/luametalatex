@@ -224,9 +224,7 @@ local intents = {[0]=
 }
 local function srgb_lookup(pfile, intent)
   if not srgb_colorspace then
-    local file <close> = readfile('data', 'sRGB.icc')
-    local profile = file()
-    local objnum = pfile:stream(nil, '/N 3', profile) -- FIXME: file stream
+    local objnum = pfile:stream(nil, '/N 3', 'sRGB.icc', true)
     srgb_colorspace = string.format('[/ICCBased %i 0 R]', objnum)
   end
   return objnum, intents[intent] or ''

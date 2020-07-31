@@ -263,12 +263,6 @@ local function endboxrotation(p, list, x, y)
   elseif orientation == 3 then
     y = y + hoff
     write_matrix(0, -1, 1, 0, x-y, x+y, p)
-  elseif orientation == 4 then
-    error[[TODO]] -- FIXME
-    write_matrix(1, 0, 0, 1, 0, 0, p)
-  elseif orientation == 5 then
-    error[[TODO]] -- FIXME
-    write_matrix(1, 0, 0, 1, 0, 0, p)
   end
 end
 
@@ -409,7 +403,10 @@ function nodehandler.rule(p, n, x, y, outer)
   end
 end
 end
-function nodehandler.disc(p, n, x, y, list, ...) -- FIXME: I am not sure why this can happen, let's assume we can use .replace
+-- If we encounter disc here, we can just use .replace. We could make TeX drop these using node.flatten_discretionaries,
+-- but for now we just accept them. This approach might be a bit faster, but it leads to a few issue due to directions etc.
+-- so it might change soon(ish) TODO: Review
+function nodehandler.disc(p, n, x, y, list, ...)
   for n in traverse(getreplace(n)) do
     local next = getnext(n)
     local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
@@ -532,7 +529,7 @@ local function do_commands(p, c, f, cid, fid, x, y, outer, x0, level, direction)
     elseif cmd[1] == "right" then
       x = x + cmd[2]
     elseif cmd[1] == "down" then
-      y = y - cmd[2] -- TODO: Review sign
+      y = y - cmd[2]
     elseif cmd[1] == "push" then
       stack[#stack + 1] = {x, y}
     elseif cmd[1] == "pop" then
@@ -574,7 +571,7 @@ vf = {
     direct.free(n)
   end,
   down = function(dy)
-    vf_state[5] = vf_state[5] - dy -- TODO: Review sign
+    vf_state[5] = vf_state[5] - dy
   end,
   fontid = function(fid)
     vf_state[3] = fid
