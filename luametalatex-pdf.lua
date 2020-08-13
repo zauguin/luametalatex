@@ -10,6 +10,7 @@ local assigned = {}
 local delayed = {}
 local compress = xzip.compress
 local pdfvariable = pdf.variable
+local digest = sha2.digest256
 -- slightly tricky interface: No/nil return means that the objects content
 -- isn't known yet, while false indicates a delayed object.
 local function written(pdf, num)

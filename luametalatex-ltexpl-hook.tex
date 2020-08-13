@@ -1,6 +1,10 @@
 \directlua{unhook_expl()}
 % See baseregisters for list of toks pdfvariables
 \directlua{initialize_pdf_toks()}
+% We hardcode the ids of two catcodetables. If they ever change in the format, abort.
+\if 0\ifnum1=\catcodetable@initex\else\expandafter1\fi\ifnum2=\catcodetable@string\else\expandafter1\fi 0\else
+  \errmessage{Inconsistent catcodetable identifiers}
+\fi
 \ifx\@tfor\undefined
   \def\@tfor#1\do#2{}
 \fi

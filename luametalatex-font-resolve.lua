@@ -2,7 +2,7 @@ font.read_tfm = require'luametalatex-font-tfm'
 local read_vf = require'luametalatex-font-vf'
 font.read_vf = read_vf
 local fontmap = require'luametalatex-pdf-font-map'.fontmap
-local callback_find = callback.find
+local callbacks = require'luametalatex-callbacks'
 
 local old_font_define = font.define
 local old_addcharacters = font.addcharacters
@@ -78,7 +78,7 @@ function font.define(f)
   if f.fonts then
     for i, f in next, f.fonts do
       if not f.id then
-        f.id = assert(callback_find'define_font'(f.name, f.size or -1000))
+        f.id = assert(callbacks.define_font(f.name, f.size or -1000))
       elseif f.id == 0 then
         f.id = id
       end
@@ -96,7 +96,7 @@ function font.addcharacters(fid, newdir)
       fonts_map = {}
       for i,f in next, newdir.fonts do
         if not f.id then
-          f.id = assert(callback_find'define_font'(f.name, f.size or -1000))
+          f.id = assert(callback.define_font(f.name, f.size or -1000))
         elseif f.id == 0 then
           f.id = fid
         end

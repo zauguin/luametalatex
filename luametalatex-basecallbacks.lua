@@ -1,19 +1,19 @@
--- Two callbacks are defined in other files: pre_dump in lateinit and find_fmt_file in init
+-- Three callbacks are defined in other files: stop_run in back-pdf, pre_dump in lateinit, and find_fmt_file in init
 
 local read_tfm = font.read_tfm
 local font_define = font.define
-local callback_register = callback.register
+local callbacks = require'luametalatex-callbacks'
 
 if status.ini_version then
-  callback_register('define_font', function(name, size)
+  function callbacks.define_font(name, size)
     local f = read_tfm(name, size)
     if not f then return end
     local id = font_define(f)
     lua.prepared_code[#lua.prepared_code+1] = string.format("assert(%i == font.define(font.read_tfm(%q, %i)))", id, name, size)
     return id
-  end)
+  end
 else
-  callback_register('define_font', function(name, size)
+  function callbacks.define_font(name, size)
     local f = read_tfm(name, size)
     if not f then
       tex.error(string.format("Font %q not found", name), "The requested font could't be loaded.\n\z
@@ -22,40 +22,94 @@ else
       return 0
     end
     return font.define(f)
-  end)
+  end
 end
-callback_register('find_log_file', function(name) return name end)
-do
+callbacks.__freeze'define_font'
+
+function callbacks.find_log_file(name) return name end
+callbacks.__freeze'find_log_file'
+
+-- find_data_file is not an engine callback in luametatex, so we don't __freeze it
+if status.ini_version then
+  function unhook_expl()
+    callbacks.find_data_file = nil
+  end
+  function callbacks.find_data_file(name)
+    if name == 'ltexpl.ltx' then
+      name = 'luametalatex-ltexpl-hook'
+    end
+    return kpse.find_file(name, 'tex', true)
+  end
+end
   local function normal_find_data_file(name)
     return kpse.find_file(name, 'tex', true)
   end
-  if status.ini_version then
-    function unhook_expl()
-      callback_register('find_data_file', normal_find_data_file)
-    end
-    callback_register('find_data_file', function(name)
-      if name == 'ltexpl.ltx' then
-        name = 'luametalatex-ltexpl-hook'
-      end
-      return normal_find_data_file(name)
-    end)
+function callbacks.open_data_file(name)
+  local find_callback = callbacks.find_data_file
+  local path
+  if find_callback then
+    path = find_callback(name)
   else
-    callback_register('find_data_file', normal_find_data_file)
+    path = kpse.find_file(name, 'tex', true)
   end
-end
-callback_register('open_data_file', function(name)
-  local f = io.open(name, 'r')
-  return setmetatable({
+  if not path then return end
+
+  local open_callback = callbacks.open_data_file
+  if open_callback then
+    return open_callback(path)
+  end
+
+  local f = io.open(path, 'r')
+  return f and setmetatable({
     reader = function()
       local line = f:read()
       return line
     end,
-    close = function()error[[1]] return f:close() end,
+    close = function() f:close() f = nil end,
   }, {
-    __gc = function()f:close()end,
+    __gc = function() if f then f:close() end end,
   })
-end)
-callback_register('handle_error_hook', function()
+end
+callbacks.__freeze('open_data_file', true)
+
+local do_terminal_input do
+  local function terminal_open_data_file()
+    local old = callbacks.open_data_file
+    return function()
+      callbacks.open_data_file = old
+      return {
+        reader = function()
+          texio.write_nl('term', '* ')
+          local line = io.stdin:read()
+          return line
+        end,
+        close = function() end,
+      }
+    end
+  end
+  function do_terminal_input()
+    local old_find = callbacks.find_data_file
+    function callbacks.find_data_file(name) 
+      callbacks.find_data_file = old_find 
+      return name
+    end
+    callbacks.open_data_file = terminal_open_data_file()
+    token.put_next(token.create'expandafter', token.create'relax', token.create'input', 'TERMINAL ')
+    token.skip_next_expanded()
+  end
+end
+
+function callbacks.intercept_tex_error(mode, eof)
+  -- if eof then
+  --   print'EOF'
+  --   tex.runtoks(function()token.put_next(token.create'tracingall')end)
+  --   do_terminal_input()
+  --   tex.runtoks(token.skip_next)
+  --   return 3
+  -- end
+  texio.write'.'
+  tex.show_context()
+  if mode ~= 3 then return mode end
   repeat
     texio.write_nl'? '
     local line = io.read()
@@ -85,4 +139,5 @@ callback_register('handle_error_hook', function()
     end
   until false
   return 3
-end)
+end
+callbacks.__freeze'intercept_tex_error'

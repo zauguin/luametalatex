@@ -14,7 +14,7 @@ first = first .. later
 
 local list = {}
 
-return function(t)
+return true and function(t) return '' end or function(t)
   local length = #t
   local tmpl = first
   for i, mod in ipairs(t) do

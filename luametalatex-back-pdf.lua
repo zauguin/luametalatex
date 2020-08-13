@@ -1,6 +1,16 @@
+local scan_int = token.scan_integer
+local scan_token = token.scan_token
+local scan_keyword = token.scan_keyword
+local scan_string = token.scan_string
+local scan_word = token.scan_word
+local scan_dimen = token.scan_dimen
+local scan_box = token.scan_box
+token.scan_list = scan_box -- They are equal if no parameter is present
+
 local pdf = pdf
 local pdfvariable = pdf.variable
 
+local callbacks = require'luametalatex-callbacks'
 local writer = require'luametalatex-nodewriter'
 local newpdf = require'luametalatex-pdf'
 local nametree = require'luametalatex-pdf-nametree'
@@ -36,7 +46,6 @@ local colorstacks = {{
     default = "0 g 0 G",
     page_stack = {"0 g 0 G"},
   }}
-token.scan_list = token.scan_box -- They are equal if no parameter is present
 local spacer_cmd = token.command_id'spacer'
 local function get_pfile()
   if not pfile then
@@ -71,7 +80,7 @@ token.luacmd("shipout", function()
   local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
   local voff = node.new'kern'
   voff.kern = total_voffset
-  voff.next = token.scan_list()
+  voff.next = scan_box()
   voff.next.shift = total_hoffset
   local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
   local pageheight, pagewidth = tex.pageheight, tex.pagewidth
@@ -87,7 +96,7 @@ token.luacmd("shipout", function()
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources .. pdf.pageresources), annots, pdfvariable.pageattr, pdf.pageattributes))
   node.flush_list(list)
   token.put_next(reset_deadcycles)
-  token.scan_token()
+  scan_token()
 end, 'force', 'protected')
 
 local infodir = ""
@@ -153,7 +162,10 @@ local function nodefont_newindex(t, k, v)
   return rawset(t, k, v)
 end
 
-callback.register("stop_run", function()
+function callbacks.stop_run()
+  local user_callback = callbacks.stop_run
+  if user_callback then user_callback() end
+
   if not pfile then
     return
   end
@@ -234,19 +246,21 @@ callback.register("stop_run", function()
   texio.write_nl("  " .. table.concat(nodestat, ', '))
   texio.write_nl(string.format("Output written on %s (%d pages, %d bytes).", pdfname, pages, size))
   texio.write_nl(string.format("Transcript written on %s.\n", status.log_name))
-end, "Finish PDF file")
+end
+callbacks.__freeze('stop_run', true)
+
 token.luacmd("pdfvariable", function()
   for _, n in ipairs(pdf.variable_names) do
-    if token.scan_keyword(n) then
+    if scan_keyword(n) then
       return token.put_next(token.create('pdfvariable  ' .. n))
     end
   end
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
   --[[
-  error(string.format("Unknown PDF variable %s", token.scan_word()))
+  error(string.format("Unknown PDF variable %s", scan_word()))
   ]] -- Delay the error to ensure luatex85.sty compatibility
-  texio.write_nl(string.format("Unknown PDF variable %s", token.scan_word()))
+  texio.write_nl(string.format("Unknown PDF variable %s", scan_word()))
   tex.sprint"\\unexpanded{\\undefinedpdfvariable}"
 end)
 
@@ -534,7 +548,7 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
   pdf.write(colorstack.mode, stack[#stack], x, y, p)
 end)
 local function write_colorstack()
-  local idx = token.scan_int()
+  local idx = scan_int()
   local colorstack = colorstacks[idx + 1]
   if not colorstack then
     tex.error('Undefined colorstack', {"The requested colorstack is not initialized. \z
@@ -542,10 +556,10 @@ local function write_colorstack()
         that you specified the wrong index. I will continue with colorstack 0."})
     colorstack = colorstacks[1]
   end
-  local action = token.scan_keyword'pop' and 'pop'
-              or token.scan_keyword'set' and 'set'
-              or token.scan_keyword'current' and 'current'
-              or token.scan_keyword'push' and 'push'
+  local action = scan_keyword'pop' and 'pop'
+              or scan_keyword'set' and 'set'
+              or scan_keyword'current' and 'current'
+              or scan_keyword'push' and 'push'
   if not action then
     tex.error('Missing action specifier for colorstack', {
         "I don't know what you want to do with this colorstack. I would have expected pop/set/current or push here. \z
@@ -554,7 +568,7 @@ local function write_colorstack()
   end
   local text
   if action == "push" or "set" then
-    text = token.scan_string()
+    text = scan_string()
     -- text = token.to_string(token.scan_tokenlist()) -- Attention! This should never be executed in an expand-only context
   end
   local whatsit = node.new(whatsit_id, colorstack_whatsit)
@@ -568,97 +582,103 @@ end
 local function scan_action()
   local action_type
   
-  if token.scan_keyword'user' then
-    return {action_type = 3, data = token.scan_string()}
-  elseif token.scan_keyword'thread' then
+  if scan_keyword'user' then
+    return {action_type = 3, data = scan_string()}
+  elseif scan_keyword'thread' then
     error[[FIXME: Unsupported]] -- TODO
-  elseif token.scan_keyword'goto' then
+  elseif scan_keyword'goto' then
     action_type = 1
   else
     error[[Unsupported action]]
   end
   local action = {
     action_type = action_type,
-    file = token.scan_keyword'file' and token.scan_string(),
+    file = scan_keyword'file' and scan_string(),
   }
-  if token.scan_keyword'page' then
+  if scan_keyword'page' then
     assert(action_type == 1)
     action_type = 0
-    local page = token.scan_int()
+    action.action_type = 0
+    local page = scan_int()
     if page <= 0 then
       error[[page must be positive in action specification]]
     end
     action.page = page
-    action.tokens = token.scan_string()
-  elseif token.scan_keyword'num' then
+    action.tokens = scan_string()
+  elseif scan_keyword'num' then
     if action.file and action_type == 1 then
       error[[num style GoTo actions must be internal]]
     end
-    action.id = token.scan_int()
+    action.id = scan_int()
     if action.id <= 0 then
       error[[id must be positive]]
     end
-  elseif token.scan_keyword'name' then
-    action.id = token.scan_string()
+  elseif scan_keyword'name' then
+    action.id = scan_string()
   else
     error[[Unsupported id type]]
   end
-  action.new_window = token.scan_keyword'newwindow' and 1
-                   or token.scan_keyword'nonewwindow' and 2
+  action.new_window = scan_keyword'newwindow' and 1
+                   or scan_keyword'nonewwindow' and 2
   if action.new_window and not action.file then
     error[[newwindow is only supported for external files]]
   end
   return action
 end
 local function scan_literal_mode()
-  return token.scan_keyword"direct" and "direct"
-      or token.scan_keyword"page" and "page"
-      or token.scan_keyword"text" and "text"
-      or token.scan_keyword"direct" and "direct"
-      or token.scan_keyword"raw" and "raw"
+  return scan_keyword"direct" and "direct"
+      or scan_keyword"page" and "page"
+      or scan_keyword"text" and "text"
+      or scan_keyword"direct" and "direct"
+      or scan_keyword"raw" and "raw"
       or "origin"
 end
 local function maybe_gobble_cmd(cmd)
-  local t = token.scan_token()
+  local t = scan_token()
   if t.command ~= cmd then
     token.put_next(t)
   end
 end
 token.luacmd("pdffeedback", function()
-  if token.scan_keyword"colorstackinit" then
-    local page = token.scan_keyword'page'
-              or (token.scan_keyword'nopage' and false) -- If you want to pass "page" as mode
+  if scan_keyword"colorstackinit" then
+    local page = scan_keyword'page'
+              or (scan_keyword'nopage' and false) -- If you want to pass "page" as mode
     local mode = scan_literal_mode()
-    local default = token.scan_string()
+    local default = scan_string()
     tex.sprint(tostring(pdf.newcolorstack(default, mode, page)))
-  elseif token.scan_keyword"creationdate" then
+  elseif scan_keyword"creationdate" then
     tex.sprint(creationdate)
-  elseif token.scan_keyword"lastannot" then
+  elseif scan_keyword"lastannot" then
     tex.sprint(tostring(lastannot))
-  elseif token.scan_keyword"lastobj" then
+  elseif scan_keyword"lastobj" then
     tex.sprint(tostring(lastobj))
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
-    error(string.format("Unknown PDF feedback %s", token.scan_word()))
+    error(string.format("Unknown PDF feedback %s", scan_word()))
   end
 end)
-token.luacmd("pdfextension", function(_, imm)
-  if token.scan_keyword"colorstack" then
+token.luacmd("pdfextension", function(_, immediate)
+  if immediate == "value" then return end
+  if immediate and immediate & 0x7 ~= 0 then
+    immediate = immediate & 0x8
+    tex.error("Unexpected prefix", "You used \\pdfextension with a prefix that doesn't belong there. I will ignore it for now.")
+  end
+  if scan_keyword"colorstack" then
     write_colorstack()
-  elseif token.scan_keyword"literal" then
+  elseif scan_keyword"literal" then
     local mode = scan_literal_mode()
-    local literal = token.scan_string()
+    local literal = scan_string()
     local whatsit = node.new(whatsit_id, literal_whatsit)
     node.setproperty(whatsit, {
         mode = mode,
         data = literal,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"startlink" then
+  elseif scan_keyword"startlink" then
     local pfile = get_pfile()
     local whatsit = node.new(whatsit_id, start_link_whatsit)
-    local attr = token.scan_keyword'attr' and token.scan_string() or ''
+    local attr = scan_keyword'attr' and scan_string() or ''
     local action = scan_action()
     local objnum = pfile:getobj()
     lastannot = num
@@ -668,27 +688,27 @@ token.luacmd("pdfextension", function(_, imm)
         objnum = objnum,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"endlink" then
+  elseif scan_keyword"endlink" then
     local whatsit = node.new(whatsit_id, end_link_whatsit)
     node.write(whatsit)
-  elseif token.scan_keyword"save" then
+  elseif scan_keyword"save" then
     local whatsit = node.new(whatsit_id, save_whatsit)
     node.write(whatsit)
-  elseif token.scan_keyword"setmatrix" then
-    local matrix = token.scan_string()
+  elseif scan_keyword"setmatrix" then
+    local matrix = scan_string()
     local whatsit = node.new(whatsit_id, setmatrix_whatsit)
     node.setproperty(whatsit, {
         data = matrix,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"restore" then
+  elseif scan_keyword"restore" then
     local whatsit = node.new(whatsit_id, restore_whatsit)
     node.write(whatsit)
-  elseif token.scan_keyword"info" then
-    infodir = infodir .. token.scan_string()
-  elseif token.scan_keyword"catalog" then
-    catalogdir = catalogdir .. ' ' .. token.scan_string()
-    if token.scan_keyword'openaction' then
+  elseif scan_keyword"info" then
+    infodir = infodir .. scan_string()
+  elseif scan_keyword"catalog" then
+    catalogdir = catalogdir .. ' ' .. scan_string()
+    if scan_keyword'openaction' then
       if catalog_openaction then
         tex.error("Duplicate openaction", {"Only one use of \\pdfextension catalog is allowed to \z
             have an openaction."})
@@ -697,19 +717,19 @@ token.luacmd("pdfextension", function(_, imm)
         catalog_openaction = get_action_attr(get_pfile(), action)
       end
     end
-  elseif token.scan_keyword"names" then
-    namesdir = namesdir .. ' ' .. token.scan_string()
-  elseif token.scan_keyword"obj" then
+  elseif scan_keyword"names" then
+    namesdir = namesdir .. ' ' .. scan_string()
+  elseif scan_keyword"obj" then
     local pfile = get_pfile()
-    if token.scan_keyword"reserveobjnum" then
+    if scan_keyword"reserveobjnum" then
       lastobj = pfile:getobj()
     else
-      local num = token.scan_keyword'useobjnum' and token.scan_int() or pfile:getobj()
+      local num = scan_keyword'useobjnum' and scan_int() or pfile:getobj()
       lastobj = num
-      local attr = token.scan_keyword'stream' and (token.scan_keyword'attr' and token.scan_string() or '')
-      local isfile = token.scan_keyword'file'
-      local content = token.scan_string()
-      if imm == 'immediate' then
+      local attr = scan_keyword'stream' and (scan_keyword'attr' and scan_string() or '')
+      local isfile = scan_keyword'file'
+      local content = scan_string()
+      if immediate == 8 then
         if attr then
           pfile:stream(num, attr, content, isfile)
         else
@@ -723,43 +743,43 @@ token.luacmd("pdfextension", function(_, imm)
         end
       end
     end
-  elseif token.scan_keyword"refobj" then
-    local num = token.scan_int()
+  elseif scan_keyword"refobj" then
+    local num = scan_int()
     local whatsit = node.new(whatsit_id, refobj_whatsit)
     node.setproperty(whatsit, {
         obj = num,
       })
     node.write(whatsit)
-  elseif token.scan_keyword"outline" then
+  elseif scan_keyword"outline" then
     local pfile = get_pfile()
-    local attr = token.scan_keyword'attr' and token.scan_string() or ''
+    local attr = scan_keyword'attr' and scan_string() or ''
     local action
-    if token.scan_keyword"useobjnum" then
-      action = token.scan_int()
+    if scan_keyword"useobjnum" then
+      action = scan_int()
     else
       local actionobj = scan_action()
       action = pfile:indirect(nil, get_action_attr(pfile, actionobj))
     end
     local outline = get_outline()
-    if token.scan_keyword'level' then
-      local level = token.scan_int()
-      local open = token.scan_keyword'open'
-      local title = token.scan_string()
+    if scan_keyword'level' then
+      local level = scan_int()
+      local open = scan_keyword'open'
+      local title = scan_string()
       outline:add(pdf_text(title), action, level, open, attr)
     else
-      local count = token.scan_keyword'count' and token.scan_int() or 0
-      local title = token.scan_string()
+      local count = scan_keyword'count' and scan_int() or 0
+      local title = scan_string()
       outline:add_legacy(pdf_text(title), action, count, attr)
     end
-  elseif token.scan_keyword"dest" then
+  elseif scan_keyword"dest" then
     local id
-    if token.scan_keyword'num' then
-      id = token.scan_int()
+    if scan_keyword'num' then
+      id = scan_int()
       if id <= 0 then
         error[[id must be positive]]
       end
-    elseif token.scan_keyword'name' then
-      id = token.scan_string()
+    elseif scan_keyword'name' then
+      id = scan_string()
     else
       error[[Unsupported id type]]
     end
@@ -768,54 +788,54 @@ token.luacmd("pdfextension", function(_, imm)
       dest_id = id,
     }
     node.setproperty(whatsit, prop)
-    if token.scan_keyword'xyz' then
+    if scan_keyword'xyz' then
       prop.dest_type = 'xyz'
-      prop.xyz_zoom = token.scan_keyword'zoom' and token.scan_int()
+      prop.xyz_zoom = scan_keyword'zoom' and scan_int()
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fitr' then
+    elseif scan_keyword'fitr' then
       prop.dest_type = 'fitr'
       maybe_gobble_cmd(spacer_cmd)
       while true do
-        if token.scan_keyword'width' then
-          prop.width = token.scan_dimen()
-        elseif token.scan_keyword'height' then
-          prop.height = token.scan_dimen()
-        elseif token.scan_keyword'depth' then
-          prop.depth = token.scan_dimen()
+        if scan_keyword'width' then
+          prop.width = scan_dimen()
+        elseif scan_keyword'height' then
+          prop.height = scan_dimen()
+        elseif scan_keyword'depth' then
+          prop.depth = scan_dimen()
         else
           break
         end
       end
-    elseif token.scan_keyword'fitbh' then
+    elseif scan_keyword'fitbh' then
       prop.dest_type = 'fitbh'
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fitbv' then
+    elseif scan_keyword'fitbv' then
       prop.dest_type = 'fitbv'
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fitb' then
+    elseif scan_keyword'fitb' then
       prop.dest_type = 'fitb'
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fith' then
+    elseif scan_keyword'fith' then
       prop.dest_type = 'fith'
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fitv' then
+    elseif scan_keyword'fitv' then
       prop.dest_type = 'fitv'
       maybe_gobble_cmd(spacer_cmd)
-    elseif token.scan_keyword'fit' then
+    elseif scan_keyword'fit' then
       prop.dest_type = 'fit'
       maybe_gobble_cmd(spacer_cmd)
     else
       error[[Unsupported dest type]]
     end
     node.write(whatsit)
-  elseif token.scan_keyword'mapline' then
-    fontmap.mapline(token.scan_string())
+  elseif scan_keyword'mapline' then
+    fontmap.mapline(scan_string())
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
-    error(string.format("Unknown PDF extension %s", token.scan_word()))
+    error(string.format("Unknown PDF extension %s", scan_word()))
   end
-end, "protected")
+end, "value")
 local imglib = require'luametalatex-pdf-image'
 local imglib_node = imglib.node
 local imglib_write = imglib.write
@@ -832,19 +852,25 @@ local lastimage = -1
 local lastimagepages = -1
 
 -- These are very minimal right now but LaTeX isn't using the scaling etc. stuff anyway.
-token.luacmd("saveimageresource", function(imm)
-  local attr = token.scan_keyword'attr' and token.scan_string() or nil
-  local page = token.scan_keyword'page' and token.scan_int() or nil
-  local userpassword = token.scan_keyword'userpassword' and token.scan_string() or nil
-  local ownerpassword = token.scan_keyword'ownerpassword' and token.scan_string() or nil
-  -- local colorspace = token.scan_keyword'colorspace' and token.scan_int() or nil -- Doesn't make sense for PDF
-  local pagebox = token.scan_keyword'mediabox' and 'media'
-               or token.scan_keyword'cropbox' and 'crop'
-               or token.scan_keyword'bleedbox' and 'bleed'
-               or token.scan_keyword'trimbox' and 'trim'
-               or token.scan_keyword'artbox' and 'art'
+token.luacmd("saveimageresource", function(_, immediate)
+  if immediate == "value" then return end
+  if immediate and immediate & 0x7 ~= 0 then
+    print(immediate)
+    immediate = immediate & 0x8
+    tex.error("Unexpected prefix", "You used \\saveimageresource with a prefix that doesn't belong there. I will ignore it for now.")
+  end
+  local attr = scan_keyword'attr' and scan_string() or nil
+  local page = scan_keyword'page' and scan_int() or nil
+  local userpassword = scan_keyword'userpassword' and scan_string() or nil
+  local ownerpassword = scan_keyword'ownerpassword' and scan_string() or nil
+  -- local colorspace = scan_keyword'colorspace' and scan_int() or nil -- Doesn't make sense for PDF
+  local pagebox = scan_keyword'mediabox' and 'media'
+               or scan_keyword'cropbox' and 'crop'
+               or scan_keyword'bleedbox' and 'bleed'
+               or scan_keyword'trimbox' and 'trim'
+               or scan_keyword'artbox' and 'art'
                or nil
-  local filename = token.scan_string()
+  local filename = scan_string()
   local img = imglib.scan{
     attr = attr,
     page = page,
@@ -856,14 +882,14 @@ token.luacmd("saveimageresource", function(imm)
   local pfile = get_pfile()
   lastimage = imglib.get_num(pfile, img)
   lastimagepages = img.pages or 1
-  if imm == 'immediate' then
+  if immediate == 8 then
     imglib_immediatewrite(pfile, img)
   end
-end, "protected")
+end, "value")
 
 token.luacmd("useimageresource", function()
   local pfile = get_pfile()
-  local img = assert(imglib.from_num(token.scan_int()))
+  local img = assert(imglib.from_num(scan_int()))
   imglib_write(pfile, img)
 end, "protected")
 
@@ -875,11 +901,11 @@ local integer_code = value_values.integer
 
 token.luacmd("lastsavedimageresourceindex", function()
   return integer_code, lastimage
-end, "protected", "value")
+end, "value")
 
 token.luacmd("lastsavedimageresourcepages", function()
   return integer_code, lastimagepages
-end, "protected", "value")
+end, "value")
 
 local savedbox = require'luametalatex-pdf-savedbox'
 local savedbox_save = savedbox.save
@@ -890,7 +916,7 @@ function tex.saveboxresource(n, attr, resources, immediate, type, margin, pfile)
       error[[Invalid argument to saveboxresource]]
     end
     token.put_next(token.create'box', token.new(n, token.command_id'char_given'))
-    n = token.scan_list()
+    n = scan_box()
   end
   margin = margin or pdfvariable.xformmargin
   return savedbox_save(pfile or get_pfile(), n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
@@ -899,41 +925,46 @@ tex.useboxresource = savedbox.use
 
 local lastbox = -1
 
-token.luacmd("saveboxresource", function(imm)
-  local type
-  if token.scan_keyword'type' then
-    texio.write_nl('XForm type attribute ignored')
-    type = token.scan_int()
+token.luacmd("saveboxresource", function(_, immediate)
+  if immediate == "value" then return end
+  if immediate and immediate & 0x7 ~= 0 then
+    immediate = immediate & 0x8
+    tex.error("Unexpected prefix", "You used \\saveboxresource with a prefix that doesn't belong there. I will ignore it for now.")
   end
-  local attr = token.scan_keyword'attr' and token.scan_string() or nil
-  local resources = token.scan_keyword'resources' and token.scan_string() or nil
-  local margin = token.scan_keyword'margin' and token.scan_dimen() or nil
-  local box = token.scan_int()
+  local type
+  if scan_keyword'type' then
+    texio.write_nl('XForm type attribute ignored')
+    type = scan_int()
+  end
+  local attr = scan_keyword'attr' and scan_string() or nil
+  local resources = scan_keyword'resources' and scan_string() or nil
+  local margin = scan_keyword'margin' and scan_dimen() or nil
+  local box = scan_int()
 
-  local index = tex.saveboxresource(box, attr, resources, imm == 'immediate', type, margin)
+  local index = tex.saveboxresource(box, attr, resources, immediate == 8, type, margin)
   lastbox = index
-end, "protected")
+end, "value")
 
 token.luacmd("useboxresource", function()
   local width, height, depth
   while true do
-    if token.scan_keyword'width' then
-      width = token.scan_dimen()
-    elseif token.scan_keyword'height' then
-      height = token.scan_dimen()
-    elseif token.scan_keyword'depth' then
-      depth = token.scan_dimen()
+    if scan_keyword'width' then
+      width = scan_dimen()
+    elseif scan_keyword'height' then
+      height = scan_dimen()
+    elseif scan_keyword'depth' then
+      depth = scan_dimen()
     else
       break
     end
   end
-  local index = token.scan_int()
+  local index = scan_int()
   node.write((tex.useboxresource(index, width, height, depth)))
 end, "protected")
 
 token.luacmd("lastsavedboxresourceindex", function()
   return integer_code, lastbox
-end, "protected", "value")
+end, "value")
 
 local saved_pos_x, saved_pos_y = -1, -1
 local save_pos_whatsit = declare_whatsit('save_pos', function(_, _, _, x, y)
@@ -945,11 +976,11 @@ end, "protected")
 
 token.luacmd("lastxpos", function()
   return integer_code, (saved_pos_x+.5)//1
-end, "protected", "value")
+end, "value")
 
 token.luacmd("lastypos", function()
   return integer_code, (saved_pos_y+.5)//1
-end, "protected", "value")
+end, "value")
 
 local function pdf_register_funcs(name)
   pdf[name] = ""

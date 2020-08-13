@@ -1,3 +1,6 @@
+local scan_int = token.scan_integer
+local scan_keyword = token.scan_keyword
+
 -- local names = {}
 local setters = {
 }
@@ -14,19 +17,18 @@ function tex.getpardir()  return tex.pardirection  end
 local integer_code = value_values.integer
 local function set_xdir(id, scanning)
   if scanning == 'value' then
-    print(scanning)
     return integer_code, getters[id]()
   end
   -- local global = scanning == 'global'
   local value
-  if token.scan_keyword'tlt' then
+  if scan_keyword'tlt' then
     value = 0
-  elseif token.scan_keyword'trt' then
+  elseif scan_keyword'trt' then
     value = 1
   else
-    value = token.scan_int()
+    value = scan_int()
   end
-  setters[id](value)
+  setters[id](value, scanning)
 end
 return function(name)
   local getter = tex["get" .. name]

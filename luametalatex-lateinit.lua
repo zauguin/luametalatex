@@ -14,6 +14,7 @@ pdf = {
 }
 require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before callbacks
 require'luametalatex-basecallbacks'
+local callbacks = require'luametalatex-callbacks'
 
 local primitives = {}
 do
@@ -54,6 +55,7 @@ local undefined_cmd = token.command_id'undefined_cs'
 local lua_call_cmd = token.command_id'lua_call'
 local lua_value_cmd = token.command_id'lua_value'
 local lua_expandable_call_cmd = token.command_id'lua_expandable_call'
+local if_test_cmd = token.command_id'if_test'
 function token.luacmd(name, func, ...)
   local idx
   local tok = token.create(name)
@@ -64,6 +66,8 @@ function token.luacmd(name, func, ...)
     idx = tok.index
   elseif cmd == lua_expandable_call_cmd then
     idx = tok.index
+  elseif cmd == if_test_cmd and tok.index > 48 then
+    idx = tok.index - 48
   elseif ... == 'force' then
     idx = new_luafunction(name)
     set_lua(name, idx, select(2, ...))
@@ -82,7 +86,10 @@ end
 
 if initex then
   local build_bytecode = nil -- To be filled
-  callback.register('pre_dump', function()
+  function callbacks.pre_dump()
+    local user_callback = callbacks.pre_dump
+    if user_callback then user_callback() end
+
     local prepared = lua.prepared_code
     prepared[1] = string.format("fixupluafunctions(%i)", predefined_luafunctions)
     for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
@@ -121,7 +128,8 @@ if initex then
       end
     end
     lua.bytecode[tex.count[262]+1] = build_bytecode(table.concat(prepared, '\n'))
-  end)
+  end
+  callbacks.__freeze('pre_dump', true)
   return function(f)
     build_bytecode = f
     return require'luametalatex-firstcode'

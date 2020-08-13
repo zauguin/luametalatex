@@ -24,10 +24,10 @@
   \noexpand\luametalatex@@everyjobandnow{\noexpand\directlua{!
     lua.get_functions_table()[\the\luametalatex@@expandglyphsinfont] = function()
       token.put_next(token.create'fontid')
-      local font = token.scan_int()
-      local stretch = token.scan_int()
-      local shrink = token.scan_int()
-      local step = token.scan_int()
+      local font = token.scan_integer()
+      local stretch = token.scan_integer()
+      local shrink = token.scan_integer()
+      local step = token.scan_integer()
       token.set_macro('pickup@font@@hook@luametalatex@microtype@' .. font, string.format("{}{%i}{%i}{%i}", stretch, shrink, step), "global")
     end
   }}

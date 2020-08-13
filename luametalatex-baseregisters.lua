@@ -1,5 +1,9 @@
+local scan_dimen = token.scan_dimen
+local scan_int = token.scan_integer
+local scan_keyword = token.scan_keyword
+
 local value_values = token.values'value'
-for i=0,#value_values do
+for i=0, #value_values do
   value_values[value_values[i]] = i
 end
 local count_code = value_values.integer
@@ -30,10 +34,10 @@ local function tex_variable(value, scanner, name, default)
     if scanning == 'value' then
       return value, tex_variables[name]
     else
-      token.scan_keyword'='
-      return set_local(tex_variables, name, scanner(), scanning == 'global')
+      scan_keyword'='
+      return set_local(tex_variables, name, scanner(), scanning and scanning & 4 == 4)
     end
-  end, 'global', 'protected', 'value')
+  end, 'global', 'value')
   if status.ini_version then
     tex_variables[name] = default
   end
@@ -99,14 +103,14 @@ local function pdf_variable(value, scanner, name, default, force_default)
     if scanning == 'value' then
       return value, real_pdf_variables[name]
     elseif force_default then
-      token.scan_keyword'='
+      scan_keyword'='
       local new = scanner()
       if new ~= default then
         texio.write_nl('term and log', string.format("Unsupported PDF variable: \z
             %q is not supported and fixed to %i, but you tried to set it to %i", name, default, new))
       end
     else
-      token.scan_keyword'='
+      scan_keyword'='
       return set_local(real_pdf_variables, name, scanner(), scanning == 'global')
     end
   end, 'global', 'protected', 'value')
@@ -115,43 +119,43 @@ local function pdf_variable(value, scanner, name, default, force_default)
   end
 end
 
-tex_variable(count_code, token.scan_int, 'suppressfontnotfounderror', 0)
-tex_variable(count_code, token.scan_int, 'outputmode', 1) -- The "traditional" default would be 0,
+tex_variable(count_code, scan_int, 'suppressfontnotfounderror', 0)
+tex_variable(count_code, scan_int, 'outputmode', 1) -- The "traditional" default would be 0,
                                                           -- but we do not actually support that.
-tex_variable(dimen_code, token.scan_dimen, 'pageheight', 0)
-tex_variable(dimen_code, token.scan_dimen, 'pagewidth', 0)
+tex_variable(dimen_code, scan_dimen, 'pageheight', 0)
+tex_variable(dimen_code, scan_dimen, 'pagewidth', 0)
 
-tex_variable(count_code, token.scan_int, 'bodydirection', 0)
-tex_variable(count_code, token.scan_int, 'pagedirection', 0)
+tex_variable(count_code, scan_int, 'bodydirection', 0)
+tex_variable(count_code, scan_int, 'pagedirection', 0)
 
-pdf_variable(dimen_code, token.scan_dimen, 'horigin', tex.sp'1in')
-pdf_variable(dimen_code, token.scan_dimen, 'vorigin', tex.sp'1in')
-pdf_variable(dimen_code, token.scan_dimen, 'linkmargin', tex.sp'0pt')
-pdf_variable(dimen_code, token.scan_dimen, 'destmargin', tex.sp'0pt')
-pdf_variable(dimen_code, token.scan_dimen, 'xformmargin', tex.sp'0pt')
-pdf_variable(dimen_code, token.scan_dimen, 'threadmargin', tex.sp'0pt', true) -- We don't support threads, so this isn't doing anything
-pdf_variable(count_code, token.scan_int, 'majorversion', 1)
-pdf_variable(count_code, token.scan_int, 'minorversion', 7)
-pdf_variable(count_code, token.scan_int, 'compresslevel', 9)
-pdf_variable(count_code, token.scan_int, 'objcompresslevel', 3)
+pdf_variable(dimen_code, scan_dimen, 'horigin', tex.sp'1in')
+pdf_variable(dimen_code, scan_dimen, 'vorigin', tex.sp'1in')
+pdf_variable(dimen_code, scan_dimen, 'linkmargin', tex.sp'0pt')
+pdf_variable(dimen_code, scan_dimen, 'destmargin', tex.sp'0pt')
+pdf_variable(dimen_code, scan_dimen, 'xformmargin', tex.sp'0pt')
+pdf_variable(dimen_code, scan_dimen, 'threadmargin', tex.sp'0pt', true) -- We don't support threads, so this isn't doing anything
+pdf_variable(count_code, scan_int, 'majorversion', 1)
+pdf_variable(count_code, scan_int, 'minorversion', 7)
+pdf_variable(count_code, scan_int, 'compresslevel', 9)
+pdf_variable(count_code, scan_int, 'objcompresslevel', 3)
 
-pdf_variable(count_code, token.scan_int, 'decimaldigits', 4, true) -- Will probably stay fixed, but should be more consistent
-pdf_variable(count_code, token.scan_int, 'gentounicode', 0, true) -- We expect the fontloader to generade tounicode tables. Might change at some point
+pdf_variable(count_code, scan_int, 'decimaldigits', 4, true) -- Will probably stay fixed, but should be more consistent
+pdf_variable(count_code, scan_int, 'gentounicode', 0, true) -- We expect the fontloader to generade tounicode tables. Might change at some point
 -- These two are ignored, but that is consistent with pdfTeX as long as imageapplygamma is 0:
-pdf_variable(count_code, token.scan_int, 'gamma', 1000)
-pdf_variable(count_code, token.scan_int, 'imagegamma', 1000)
-pdf_variable(count_code, token.scan_int, 'imageapplygamma', 0, true)
-pdf_variable(count_code, token.scan_int, 'imagehicolor', 1, true) -- We don't consider ancient PDF versions, no no reason to strip images
-pdf_variable(count_code, token.scan_int, 'imageaddfilename', 0, true) -- Could be added, but I never saw a reason for this anyway.
-pdf_variable(count_code, token.scan_int, 'inclusionerrorlevel', -1, true) -- FIXME: At least a warning should be supported
-pdf_variable(count_code, token.scan_int, 'inclusioncopyfonts', 0, true) -- Would be fragile and restrict our ability to use "creative" font constructs
-pdf_variable(count_code, token.scan_int, 'uniqueresname', 0, true) -- I add this if you show me a usecase
-pdf_variable(count_code, token.scan_int, 'pagebox', 2, true) -- TODO (1: media, 2: crop, 3: bleed, 4: trim, 5: art
-pdf_variable(count_code, token.scan_int, 'forcepagebox', 0, true) -- Considered obsolete even in pdfTeX
-pdf_variable(count_code, token.scan_int, 'imageresolution', 72, true) -- TODO Also 0 should be the same as 72 ?!?!?!?
+pdf_variable(count_code, scan_int, 'gamma', 1000)
+pdf_variable(count_code, scan_int, 'imagegamma', 1000)
+pdf_variable(count_code, scan_int, 'imageapplygamma', 0, true)
+pdf_variable(count_code, scan_int, 'imagehicolor', 1, true) -- We don't consider ancient PDF versions, no no reason to strip images
+pdf_variable(count_code, scan_int, 'imageaddfilename', 0, true) -- Could be added, but I never saw a reason for this anyway.
+pdf_variable(count_code, scan_int, 'inclusionerrorlevel', -1, true) -- FIXME: At least a warning should be supported
+pdf_variable(count_code, scan_int, 'inclusioncopyfonts', 0, true) -- Would be fragile and restrict our ability to use "creative" font constructs
+pdf_variable(count_code, scan_int, 'uniqueresname', 0, true) -- I add this if you show me a usecase
+pdf_variable(count_code, scan_int, 'pagebox', 2, true) -- TODO (1: media, 2: crop, 3: bleed, 4: trim, 5: art
+pdf_variable(count_code, scan_int, 'forcepagebox', 0, true) -- Considered obsolete even in pdfTeX
+pdf_variable(count_code, scan_int, 'imageresolution', 72, true) -- TODO Also 0 should be the same as 72 ?!?!?!?
 
-pdf_variable(count_code, token.scan_int, 'pkresolution', 1200) -- Original default is 72, but that's crazy
-pdf_variable(count_code, token.scan_int, 'pkfixeddpi', 0) -- TODO: Implemented, but even when set to one, font sharing doesn't adapt yet.
+pdf_variable(count_code, scan_int, 'pkresolution', 1200) -- Original default is 72, but that's crazy
+pdf_variable(count_code, scan_int, 'pkfixeddpi', 0) -- TODO: Implemented, but even when set to one, font sharing doesn't adapt yet.
                                                           -- Changing that is complicated because it has to be known pretty early.
 pdf_toks('pkmode', '')
 
