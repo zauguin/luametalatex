@@ -414,9 +414,17 @@ function nodehandler.disc(p, n, x, y, list, ...)
     x = w + x
   end
 end
+local gluesubtypes = {}
+for i, n in next, node.subtypes'glue' do
+  gluesubtypes[n] = i
+end
+local  leaders_glue = gluesubtypes.leaders
+local cleaders_glue = gluesubtypes.cleaders
+local xleaders_glue = gluesubtypes.xleaders
+local gleaders_glue = gluesubtypes.gleaders
 function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is an interesting one.
   local subtype = getsubtype(n)
-  if subtype < 100 then return end -- We only really care about leaders
+  if subtype < leaders_glue then return end -- We only really care about leaders
   local leader = getleader(n)
   local w = direct.effective_glue(n, outer)
   if getid(leader) == 2 then -- We got a rule, this should be easy
@@ -432,7 +440,7 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
   if getid(outer) ~= 0 then
     y = y + w
   end
-  if subtype == 100 then
+  if subtype == leaders_glue then
     if getid(outer) == 0 then
       local newx = ((x-origin - 1)//lwidth + 1) * lwidth + origin
       -- local newx = -(origin-x)//lwidth * lwidth + origin
@@ -444,14 +452,14 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
       w = w + newy - y
       y = newy
     end
-  elseif subtype == 101 then
+  elseif subtype == cleaders_glue then
     local inner = w - (w // lwidth) * lwidth
     if getid(outer) == 0 then
       x = x + inner/2
     else
       y = y - inner/2
     end
-  elseif subtype == 102 then
+  elseif subtype == xleaders_glue then
     local count = w // lwidth
     local skip = (w - count * lwidth) / (count + 1)
     if getid(outer) == 0 then
@@ -460,7 +468,7 @@ function nodehandler.glue(p, n, x, y, outer, origin, level) -- Naturally this is
       y = y - skip
     end
     lwidth = lwidth + skip
-  elseif subtype == 103 then
+  elseif subtype == gleaders_glue then
     if getid(outer) == 0 then
       local newx = ((x - 1)//lwidth + 1) * lwidth
       w = w + x - newx
