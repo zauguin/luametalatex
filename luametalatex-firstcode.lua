@@ -135,7 +135,8 @@ token.luacmd("closein", function(_, prefix)
 end, "value")
 
 local function do_write(p)
-  local content = token.to_string(p.data) .. '\n'
+  local data = token.to_string(p.data)
+  local content = data and data .. '\n' or '\n'
   local file = ofiles[p.file]
   if file then
     file:write(content)
