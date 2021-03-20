@@ -16,9 +16,17 @@ require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before
 require'luametalatex-basecallbacks'
 local callbacks = require'luametalatex-callbacks'
 
+local function swap_table(t)
+  local s = {}
+  for k, v in next, t do
+    s[v] = k
+  end
+  return s
+end
+
 local primitives = {}
 do
-  local token_primitives = token.primitives()
+  local token_primitives = token.getprimitives()
   local token_new = token.new
   for i=1,#token_primitives do
     local prim = token_primitives[i]
@@ -26,6 +34,12 @@ do
   end
 end
 token.primitive_tokens = primitives
+
+do
+  local command_id = swap_table(token.getcommandvalues())
+  function token.command_id(name) return command_id[name] end
+end
+token.value = swap_table(token.getfunctionvalues())
 
 local functions = lua.getfunctionstable()
 -- I am not sure why this is necessary, but otherwise LuaMetaTeX resets
@@ -95,9 +109,9 @@ if initex then
     for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
     -- for i=0,tex.count[19] do -- Sometimes catches reserved language ids which are not used yet
     -- for i=0,lang.new():id()-1 do -- lang.new():id() is always 0 in luametatex?!?
-      local l = lang.new(i)
+      local l = language.new(i)
       local str = string.format("do \z
-        local l = lang.new(%i)\z
+        local l = language.new(%i)\z
         l:hyphenationmin(%i)\z
         l:prehyphenchar(%i)\z
         l:posthyphenchar(%i)\z

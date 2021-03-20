@@ -14,7 +14,7 @@ lua.get_functions_table()[restore_func] = function()
 end
 local restore_toks = {token.primitive_tokens.atendofgroup , token.new(restore_func, token.command_id'lua_call')}
 local put_next = token.put_next
-local runtoks = tex.runtoks
+local runlocal = tex.runlocal
 local function put_restore_toks()
   put_next(restore_toks)
 end
@@ -35,7 +35,7 @@ return function(t, k, v, global)
     local level = stack[l]
     if not level then
       level = {}
-      runtoks(put_restore_toks)
+      runlocal(put_restore_toks)
       stack[l] = level
     end
 

@@ -99,16 +99,17 @@ local do_terminal_input do
   end
 end
 
-function callbacks.intercept_tex_error(mode, eof)
-  -- if eof then
-  --   print'EOF'
-  --   tex.runtoks(function()token.put_next(token.create'tracingall')end)
-  --   do_terminal_input()
-  --   tex.runtoks(token.skip_next)
-  --   return 3
-  -- end
+local errorvalues = tex.geterrorvalues()
+function callbacks.intercept_tex_error(mode, errortype)
+  errortype = errorvalues[errortype]
+  if errortype == "eof" then
+    tex.runlocal(function()token.put_next(token.create'tracingall')end)
+    do_terminal_input()
+    tex.runlocal(token.skip_next)
+    return 3
+  end
   texio.write'.'
-  tex.show_context()
+  tex.showcontext()
   if mode ~= 3 then return mode end
   repeat
     texio.write_nl'? '
@@ -123,7 +124,7 @@ function callbacks.intercept_tex_error(mode, eof)
         Maybe you should try asking a human?")
     elseif first == 'I' then
       line = line:sub(2)
-      tex.runtoks(function()
+      tex.runlocal(function()
         tex.sprint(token.scan_token(), line)
       end)
       return 3

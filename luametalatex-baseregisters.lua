@@ -2,12 +2,8 @@ local scan_dimen = token.scan_dimen
 local scan_int = token.scan_integer
 local scan_keyword = token.scan_keyword
 
-local value_values = token.values'value'
-for i=0, #value_values do
-  value_values[value_values[i]] = i
-end
-local count_code = value_values.integer
-local dimen_code = value_values.dimension
+local count_code = token.value.integer
+local dimen_code = token.value.dimension
 
 local set_local = require'luametalatex-local'
 

@@ -1,4 +1,5 @@
 local scan_int = token.scan_integer
+token.scan_int = scan_int -- For compatibility with LuaTeX packages
 local scan_token = token.scan_token
 local scan_tokenlist = token.scan_tokenlist
 local scan_keyword = token.scan_keyword
@@ -6,6 +7,8 @@ local scan_csname = token.scan_csname
 local set_macro = token.set_macro
 
 local callback_find = callback.find
+
+local constants = status.getconstants()
 
 local lua_call_cmd = token.command_id'lua_call'
 local properties = node.direct.get_properties_table()
@@ -32,7 +35,7 @@ local function scan_filename()
     tok = scan_token()
     cmd = tok.command
   until cmd ~= spacer_cmd and cmd ~= relax_cmd
-  while (tok.command <= 12 and tok.command > 0 and tok.command ~= 9 and tok.index <= token.biggest_char()
+  while (tok.command <= 12 and tok.command > 0 and tok.command ~= 9 and tok.index <= constants.max_character_code
           or (token.put_next(tok) and false))
       and (quoted or tok.index ~= string.byte' ') do
     if tok.index == string.byte'"' then
@@ -50,7 +53,7 @@ end
 local initex_catcodetable = 1
 local string_catcodetable = 2
 if status.ini_version then
-  tex.runtoks(function()tex.sprint[[\initcatcodetable 1\initcatcodetable 2]]end)
+  tex.runlocal(function()tex.sprint[[\initcatcodetable 1\initcatcodetable 2]]end)
   local setcatcode = tex.setcatcode
   for i=0,127 do
     setcatcode('global', 2, i, 12)
@@ -135,7 +138,7 @@ token.luacmd("closein", function(_, prefix)
 end, "value")
 
 local function do_write(p)
-  local data = token.to_string(p.data)
+  local data = token.serialize(p.data)
   local content = data and data .. '\n' or '\n'
   local file = ofiles[p.file]
   if file then
@@ -198,7 +201,7 @@ token.luacmd("read", function(_, prefix)
     error[[FIXME: Ask the user for input]]
   end
   local endlocal
-  tex.runtoks(function()
+  tex.runlocal(function()
     endlocal = token.scan_next()
     tex.sprint(endlocal)
     tex.print(line and line ~= "" and line or " ")
@@ -217,7 +220,7 @@ token.luacmd("read", function(_, prefix)
     tokens[#tokens+1] = tok
   end
   if balance ~= 0 then error[[FIXME: Read additional input lines]] end
-  tex.runtoks(function()
+  tex.runlocal(function()
     tokens[#tokens+1] = rbrace
     token.put_next(tokens)
     token.put_next(token.primitive_tokens.def, token.create(macro), lbrace)
@@ -252,7 +255,7 @@ token.luacmd("readline", function(_, prefix)
 end, "value")
 
 local integer_code, boolean_code do
-  local value_values = token.values'value'
+  local value_values = token.getfunctionvalues()
   for i=0,#value_values do
     if value_values[i] == "integer" then
       integer_code = i
@@ -270,7 +273,7 @@ end, "condition")
 local late_lua_whatsit = new_whatsit('late_lua', function(p, pfile, n, x, y)
   local code = p.data
   if not code then
-    code = token.to_string(p.token)
+    code = token.serialize(p.token)
   end
   if type(code) == 'string' then
     code = assert(load(code, nil, 't'))
@@ -289,6 +292,7 @@ end, "protected")
 
 local functions = lua.get_functions_table()
 
+require'luametalatex-meaning'
 require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
 require'luametalatex-node-luaotfload'

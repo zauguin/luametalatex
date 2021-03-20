@@ -24,6 +24,19 @@ do
   end
 end
 kpse.set_program_name(arg.arg0 or arg[arg[0]], arg.progname)
+do
+  local interaction = ({ [true] = 3, [false] = false,
+    batchmode=0,
+    nonstopmode=1,
+    scrollmode=2,
+    errorstopmode=3,
+  })[arg.interaction or false]
+  if interaction then
+    tex.setinteraction(interaction)
+  elseif interaction == nil then
+    texio.write('term', string.format('Unknown interaction mode %q ignored.\n', arg.interaction))
+  end
+end
 package.searchers[2] = function(modname)
   local filename = kpse.find_file(modname, "lua", true)
   if not filename then
@@ -40,6 +53,7 @@ kpse.set_maketex("pk", true, "compile")
 require'luametalatex-init-config'
 local callback_register = callback.register
 local build_bytecode
+status.ini_version = status.run_state == 0
 if status.ini_version then
   local build_bytecode_mod = require'luametalatex-build-bytecode'
   local preloaded_modules = {}
@@ -55,19 +69,9 @@ if status.ini_version then
   end
 end
 
-callback_register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
+callback_register('find_format_file', function(name) texconfig.formatname = kpse.find_file(name, 'fmt', true) return texconfig.formatname end)
+-- texconfig.firstline = [[\show ]]
 function texconfig.init()
-  local interaction = ({ [true] = 3, [false] = false,
-    batchmode=0,
-    nonstopmode=1,
-    scrollmode=2,
-    errorstopmode=3,
-  })[arg.interaction or false]
-  if interaction then
-    tex.setinteraction(interaction)
-  elseif interaction == nil then
-    texio.write('term', string.format('Unknown interaction mode %q ignored.\n', arg.interaction))
-  end
   if build_bytecode then -- Effectivly if status.ini_version
     require'luametalatex-lateinit'(build_bytecode)
   else

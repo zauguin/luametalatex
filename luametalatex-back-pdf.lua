@@ -148,7 +148,7 @@ local function write_infodir(p)
     additional = string.format("%s/Creator(TeX)", additional)
   end
   if not string.find(infodir, "/PTEX.Fullbanner", 1, false) then
-    additional = string.format("%s/PTEX.Fullbanner(%s)", additional, status.banner)
+    additional = string.format("%s/PTEX.Fullbanner(%s)", additional, status.enginestate.banner)
   end
   return p:indirect(nil, string.format("<<%s%s>>", infodir, additional))
 end
@@ -226,7 +226,7 @@ function callbacks.stop_run()
   local size = pfile:close()
   texio.write_nl("term", "(see the transcript file for additional information)")
   -- TODO: Additional logging, epecially targeting the log file
-  texio.write_nl("term and log", string.format(" %d words of node memory still in use:", status.var_used))
+  texio.write_nl("term and log", string.format(" %d words of node memory still in use:", status.nodestate.use))
   local by_type, by_sub = {}, {}
   for n, id, sub in node.traverse(node.usedlist()) do
     if id == whatsit_id then
@@ -245,7 +245,7 @@ function callbacks.stop_run()
   end
   texio.write_nl("  " .. table.concat(nodestat, ', '))
   texio.write_nl(string.format("Output written on %s (%d pages, %d bytes).", pdfname, pages, size))
-  texio.write_nl(string.format("Transcript written on %s.\n", status.log_name))
+  texio.write_nl(string.format("Transcript written on %s.\n", status.enginestate.logfilename))
 end
 callbacks.__freeze('stop_run', true)
 
@@ -569,7 +569,7 @@ local function write_colorstack()
   local text
   if action == "push" or "set" then
     text = scan_string()
-    -- text = token.to_string(token.scan_tokenlist()) -- Attention! This should never be executed in an expand-only context
+    -- text = token.serialize(token.scan_tokenlist()) -- Attention! This should never be executed in an expand-only context
   end
   local whatsit = node.new(whatsit_id, colorstack_whatsit)
   node.setproperty(whatsit, {
@@ -893,11 +893,7 @@ token.luacmd("useimageresource", function()
   imglib_write(pfile, img)
 end, "protected")
 
-local value_values = token.values'value'
-for i=0,#value_values do
-  value_values[value_values[i]] = i
-end
-local integer_code = value_values.integer
+local integer_code = token.value.integer
 
 token.luacmd("lastsavedimageresourceindex", function()
   return integer_code, lastimage

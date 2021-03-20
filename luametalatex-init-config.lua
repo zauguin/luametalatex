@@ -32,3 +32,4 @@ for _, name in ipairs{
   local value = var_value(name)
   texconfig[name] = tonumber(value) or value or nil
 end
+texconfig.token_size = 10000000

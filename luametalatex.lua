@@ -60,7 +60,7 @@ else
   function geterrorcode(ec) return ec & 0xFF == 0 and ec >> 8 or 0xFF end
 end
 
-local firstargs = string.format("luametatex%s%s", late_arg_pattern:match('--lua=' .. file), late_arg_pattern:match('--arg0=' .. os.selfarg[0]))
+local firstargs = string.format("luametatex --permitloadlib%s%s", late_arg_pattern:match('--lua=' .. file), late_arg_pattern:match('--arg0=' .. os.selfarg[0]))
 local args = table.concat(os.selfarg)
 if run then -- The user wants to take care of everything
   os.exit(geterrorcode(os.execute(firstargs .. args)))

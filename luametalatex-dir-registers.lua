@@ -6,15 +6,11 @@ local setters = {
 }
 local getters = {
 }
-local value_values = token.values'value'
-for i=0,#value_values do
-  value_values[value_values[i]] = i
-end
 function tex.gettextdir() return tex.textdirection end
 function tex.getlinedir() return tex.linedirection end
 function tex.getmathdir() return tex.mathdirection end
 function tex.getpardir()  return tex.pardirection  end
-local integer_code = value_values.integer
+local integer_code = token.value.integer
 local function set_xdir(id, scanning)
   if scanning == 'value' then
     return integer_code, getters[id]()
