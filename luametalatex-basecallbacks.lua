@@ -103,9 +103,8 @@ local errorvalues = tex.geterrorvalues()
 function callbacks.intercept_tex_error(mode, errortype)
   errortype = errorvalues[errortype]
   if errortype == "eof" then
-    tex.runlocal(function()token.put_next(token.create'tracingall')end)
-    do_terminal_input()
-    tex.runlocal(token.skip_next)
+    -- print('EOF', token.peek_next())
+    token.put_next(token.create'ABD')
     return 3
   end
   texio.write'.'

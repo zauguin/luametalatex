@@ -68,7 +68,7 @@ end
 local undefined_cmd = token.command_id'undefined_cs'
 local lua_call_cmd = token.command_id'lua_call'
 local lua_value_cmd = token.command_id'lua_value'
-local lua_expandable_call_cmd = token.command_id'lua_expandable_call'
+local lua_protected_call_cmd = token.command_id'lua_protected_call'
 local if_test_cmd = token.command_id'if_test'
 function token.luacmd(name, func, ...)
   local idx
@@ -78,10 +78,10 @@ function token.luacmd(name, func, ...)
     idx = tok.index
   elseif cmd == lua_call_cmd then
     idx = tok.index
-  elseif cmd == lua_expandable_call_cmd then
+  elseif cmd == lua_protected_call_cmd then
     idx = tok.index
-  elseif cmd == if_test_cmd and tok.index > 48 then
-    idx = tok.index - 48
+  elseif cmd == if_test_cmd and tok.index > 49 then
+    idx = tok.index - 49
   elseif ... == 'force' then
     idx = new_luafunction(name)
     set_lua(name, idx, select(2, ...))
@@ -106,6 +106,7 @@ if initex then
 
     local prepared = lua.prepared_code
     prepared[1] = string.format("fixupluafunctions(%i)", predefined_luafunctions)
+    --[[
     for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
     -- for i=0,tex.count[19] do -- Sometimes catches reserved language ids which are not used yet
     -- for i=0,lang.new():id()-1 do -- lang.new():id() is always 0 in luametatex?!?
@@ -136,6 +137,7 @@ if initex then
       end
       prepared[#prepared+1] = str
     end
+    ]]
     for i=2,#prepared do
       if type(prepared[i]) ~= 'string' then
         prepared[i] = assert(prepared[i]())

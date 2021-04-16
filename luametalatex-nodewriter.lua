@@ -273,7 +273,7 @@ nodehandler.math = ignore_node
 nodehandler.kern = ignore_node
 -- The following are only for frontend use:
 nodehandler.boundary = ignore_node
-nodehandler.local_par = ignore_node
+nodehandler.par = ignore_node
 nodehandler.penalty = ignore_node
 nodehandler.mark = ignore_node
 

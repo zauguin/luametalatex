@@ -121,6 +121,9 @@ tex_variable(count_code, scan_int, 'outputmode', 1) -- The "traditional" default
 tex_variable(dimen_code, scan_dimen, 'pageheight', 0)
 tex_variable(dimen_code, scan_dimen, 'pagewidth', 0)
 
+tex_variable(dimen_code, scan_dimen, 'hoffset', 0)
+tex_variable(dimen_code, scan_dimen, 'voffset', 0)
+
 tex_variable(count_code, scan_int, 'bodydirection', 0)
 tex_variable(count_code, scan_int, 'pagedirection', 0)
 

@@ -190,36 +190,37 @@ token.luacmd("read", function(_, prefix)
   end
   local macro = scan_csname(true)
   local file = ifiles[id]
-  local line
-  if file then
-    line = file:reader()
-    if not line then
-      file:close()
-      ifiles[id] = nil
-    end
-  else
-    error[[FIXME: Ask the user for input]]
-  end
-  local endlocal
-  tex.runlocal(function()
-    endlocal = token.scan_next()
-    tex.sprint(endlocal)
-    tex.print(line and line ~= "" and line or " ")
-    tex.print(endlocal)
-  end)
   local tokens = {}
   local balance = 0
-  while true do
-    local tok = token.scan_next()
-    if tok == endlocal then break end
-    if tok.command == 1 then
-      balance = balance + 1
-    elseif tok.command == 2 then
-      balance = balance - 1
+  repeat
+    local line
+    if file then
+      line = file:reader()
+      if not line then
+        file:close()
+        ifiles[id] = nil
+      end
+    else
+      line = io.stdin:read()
     end
-    tokens[#tokens+1] = tok
-  end
-  if balance ~= 0 then error[[FIXME: Read additional input lines]] end
+    local endlocal
+    tex.runlocal(function()
+      endlocal = token.scan_next()
+      tex.sprint(endlocal)
+      tex.print(line and line ~= "" and line or " ")
+      tex.print(endlocal)
+    end)
+    while true do
+      local tok = token.scan_next()
+      if tok == endlocal then break end
+      if tok.command == 1 then
+        balance = balance + 1
+      elseif tok.command == 2 then
+        balance = balance - 1
+      end
+      tokens[#tokens+1] = tok
+    end
+  until balance == 0
   tex.runlocal(function()
     tokens[#tokens+1] = rbrace
     token.put_next(tokens)

@@ -63,18 +63,16 @@ local function get_outline()
   return outline
 end
 local properties = node.direct.properties
-local immediateassignment = token.new(5, token.command_id'convert')
-local global = token.new(0, token.command_id'prefix')
-local deadcycles = token.new(8, token.command_id'set_page_property')
-local zero_tok = token.create(0x30)
-local relax = token.new(0, 0)
-local reset_deadcycles = {
-  immediateassignment,
-  global,
-  deadcycles,
-  zero_tok,
-  relax,
-}
+local reset_deadcycles do
+  local tokens = {
+    token.primitive_tokens.global,
+    token.primitive_tokens.deadcycles,token.create(0x30),
+    token.primitive_tokens.relax,
+  }
+  function reset_deadcycles()
+    token.put_next(tokens)
+  end
+end
 token.luacmd("shipout", function()
   local pfile = get_pfile()
   local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
@@ -95,8 +93,7 @@ token.luacmd("shipout", function()
   local content = pfile:stream(nil, '', out)
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources .. pdf.pageresources), annots, pdfvariable.pageattr, pdf.pageattributes))
   node.flush_list(list)
-  token.put_next(reset_deadcycles)
-  scan_token()
+  tex.runlocal(reset_deadcycles)
 end, 'force', 'protected')
 
 local infodir = ""
@@ -226,7 +223,8 @@ function callbacks.stop_run()
   local size = pfile:close()
   texio.write_nl("term", "(see the transcript file for additional information)")
   -- TODO: Additional logging, epecially targeting the log file
-  texio.write_nl("term and log", string.format(" %d words of node memory still in use:", status.nodestate.use))
+  texio.write_nl("term and log", " node memory still in use:")
+  -- texio.write_nl("term and log", string.format(" %d words of node memory still in use:", status.nodestate.use))
   local by_type, by_sub = {}, {}
   for n, id, sub in node.traverse(node.usedlist()) do
     if id == whatsit_id then
