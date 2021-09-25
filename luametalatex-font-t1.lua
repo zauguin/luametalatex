@@ -40,8 +40,8 @@ local binary_bytes = lpeg.Cmt(number*white^-1*(lpeg.P'-| ' + 'RD '), function(s,
 
 local function decrypt(key, n, cipher)
   -- Generally you should never implement your own crypto. So we call a well known, peer reviewed,
-  -- high-quality cryptographic library. --- Ha-Ha, of course we are implementing by ourselves.
-  -- That might be completely unsecure, but given that the encryption keys are well known constants
+  -- high-quality cryptographic library. --- Ha-Ha, of course we are implementing this by ourselves.
+  -- That might be completely insecure, but given that the encryption keys are well known constants
   -- documented in the T1 Spec, there is no need to worry about it.
   -- Also I do not think any cryptographic library would implement this anyway, it doesn't even
   -- really deserve the term encryption.
