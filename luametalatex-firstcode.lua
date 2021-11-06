@@ -26,6 +26,36 @@ end
 --     end
 --   })
 
+do
+  luametalatex.texio = texio
+  local compat_texio = {}
+  for k,v in next, texio do compat_texio[k] = v end
+  local writenl = texio.writenl
+  local write = texio.write
+  texio = compat_texio
+  function texio.write(selector, ...)
+    if selector == 'term' then
+      selector = 'terminal'
+    elseif selector == 'log' then
+      selector = 'logfile'
+    elseif selector == 'term and log' then
+      selector = 'terminal_and_logfile'
+    end
+    return write(selector, ...)
+  end
+  function texio.write_nl(selector, ...)
+    if selector == 'term' then
+      selector = 'terminal'
+    elseif selector == 'log' then
+      selector = 'logfile'
+    elseif selector == 'term and log' then
+      selector = 'terminal_and_logfile'
+    end
+    return writenl(selector, ...)
+  end
+end
+
+
 local new_whatsit = require'luametalatex-whatsits'.new
 local whatsit_id = node.id'whatsit'
 local spacer_cmd, relax_cmd = token.command_id'spacer', token.command_id'relax'
