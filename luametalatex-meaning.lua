@@ -4,12 +4,13 @@
 
 -- Necessary especially for etoolbox's patching commands
 
+local lmlt = luametalatex
 local primitive_meaning = {
-  token.primitive_tokens.expandafter,
-  token.primitive_tokens.relax,
-  token.primitive_tokens.meaning,
+  lmlt.primitive_tokens.expandafter,
+  lmlt.primitive_tokens.relax,
+  lmlt.primitive_tokens.meaning,
 }
-token.luacmd("meaning", function()
+lmlt.luacmd("meaning", function()
   local peeked = token.peeknext()
   token.put_next(primitive_meaning)
   token.skipnextexpanded()

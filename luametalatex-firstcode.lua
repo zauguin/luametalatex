@@ -1,3 +1,5 @@
+local lmlt = luametalatex
+
 local scan_int = token.scan_int
 token.scan_int = scan_int -- For compatibility with LuaTeX packages
 local scan_token = token.scan_token
@@ -61,6 +63,8 @@ if status.ini_version then
   setcatcode('global', 2, 32, 10)
 end
 
+local immediate_flag = lmlt.flag.immediate
+
 local l = lpeg or require'lpeg'
 local add_file_extension = l.Cs((1-('.' * (1-l.S'./\\')^0) * -1)^0 * (l.P(1)^1+l.Cc'.tex'))
 local ofiles, ifiles = {}, {}
@@ -75,17 +79,17 @@ local function do_openout(p)
   end
 end
 local open_whatsit = new_whatsit('open', do_openout)
-token.luacmd("openout", function(_, immediate) -- \openout
+lmlt.luacmd("openout", function(_, immediate) -- \openout
   if immediate == "value" then return end
-  if immediate and immediate & ~0x2000 ~= 0 then
-    immediate = immediate & 0x2000
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\openout with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   scan_keyword'='
   local name = scan_filename()
   local props = {file = file, name = name}
-  if immediate and immediate == 0x2000 then
+  if immediate and immediate == immediate_flag then
     do_openout(props)
   else
     local whatsit = node.direct.new(whatsit_id, open_whatsit)
@@ -93,7 +97,7 @@ token.luacmd("openout", function(_, immediate) -- \openout
     node.direct.write(whatsit)
   end
 end, "value")
-token.luacmd("openin", function(_, prefix)
+lmlt.luacmd("openin", function(_, prefix)
   if prefix == "value" then return end
   local file = scan_int()
   scan_keyword'='
@@ -112,15 +116,15 @@ local function do_closeout(p)
   end
 end
 local close_whatsit = new_whatsit('close', do_closeout)
-token.luacmd("closeout", function(_, immediate) -- \closeout
+lmlt.luacmd("closeout", function(_, immediate) -- \closeout
   if immediate == "value" then return end
-  if immediate and immediate & ~0x2000 ~= 0 then
-    immediate = immediate & 0x2000
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\closeout with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   local props = {file = file}
-  if immediate == 0x2000 then
+  if immediate == immediate_flag then
     do_closeout(props)
   else
     local whatsit = node.direct.new(whatsit_id, close_whatsit)
@@ -128,7 +132,7 @@ token.luacmd("closeout", function(_, immediate) -- \closeout
     node.direct.write(whatsit)
   end
 end, "value")
-token.luacmd("closein", function(_, prefix)
+lmlt.luacmd("closein", function(_, prefix)
   if prefix == "value" then return end
   local file = scan_int()
   if ifiles[file] then
@@ -148,16 +152,16 @@ local function do_write(p)
   end
 end
 local write_whatsit = new_whatsit('write', do_write)
-token.luacmd("write", function(_, immediate, ...) -- \write
+lmlt.luacmd("write", function(_, immediate, ...) -- \write
   if immediate == "value" then return end
-  if immediate and immediate & ~0x2000 ~= 0 then
-    immediate = immediate & 0x2000
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\write with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   local content = scan_tokenlist()
   local props = {file = file, data = content}
-  if immediate == 0x2000 then
+  if immediate == immediate_flag then
     do_write(props)
   else
     local whatsit = node.direct.new(whatsit_id, write_whatsit)
@@ -176,13 +180,13 @@ local function prefix_to_tokens(prefix)
     end
   end
 end
-local expand_after = token.primitive_tokens.expandafter
-local input_tok = token.primitive_tokens.input
-local endlocalcontrol = token.primitive_tokens.endlocalcontrol
-local afterassignment = token.primitive_tokens.afterassignment
+local expand_after = lmlt.primitive_tokens.expandafter
+local input_tok = lmlt.primitive_tokens.input
+local endlocalcontrol = lmlt.primitive_tokens.endlocalcontrol
+local afterassignment = lmlt.primitive_tokens.afterassignment
 local lbrace = token.new(0, 1)
 local rbrace = token.new(0, 2)
-token.luacmd("read", function(_, prefix)
+lmlt.luacmd("read", function(_, prefix)
   if immediate == "value" then return end
   local id = scan_int()
   if not scan_keyword'to' then
@@ -224,12 +228,12 @@ token.luacmd("read", function(_, prefix)
   tex.runlocal(function()
     tokens[#tokens+1] = rbrace
     token.put_next(tokens)
-    token.put_next(token.primitive_tokens.def, token.create(macro), lbrace)
+    token.put_next(lmlt.primitive_tokens.def, token.create(macro), lbrace)
     prefix_to_tokens(prefix)
   end)
 end, "value")
 
-token.luacmd("readline", function(_, prefix)
+lmlt.luacmd("readline", function(_, prefix)
   if immediate == "value" then return end
   local id = scan_int()
   if not scan_keyword'to' then
@@ -266,7 +270,7 @@ local integer_code, boolean_code do
   end
 end
 
-token.luacmd("ifeof", function(_)
+lmlt.luacmd("ifeof", function(_)
   local id = scan_int()
   return boolean_code, not ifiles[id]
 end, "condition")
@@ -283,7 +287,7 @@ local late_lua_whatsit = new_whatsit('late_lua', function(p, pfile, n, x, y)
   end
   return pdf._latelua(pfile, x, y, code)
 end)
-token.luacmd("latelua", function() -- \latelua
+lmlt.luacmd("latelua", function() -- \latelua
   local content = scan_tokenlist()
   local props = {token = content}
   local whatsit = node.direct.new(whatsit_id, late_lua_whatsit)
@@ -298,7 +302,7 @@ require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
 require'luametalatex-node-luaotfload'
 
-token.luacmd("Umathcodenum", function(_, scanning)
+lmlt.luacmd("Umathcodenum", function(_, scanning)
   if scanning then
     local class, family, char = tex.getmathcodes (scan_int())
     return integer_code, char | (class | family << 3) << 21

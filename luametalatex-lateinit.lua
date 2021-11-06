@@ -1,3 +1,5 @@
+luametalatex = luametalatex or {}
+local lmlt = luametalatex
 local initex = status.ini_version
 
 if initex then
@@ -34,13 +36,14 @@ do
     primitives[prim[3]] = token_new(prim[2], prim[1])
   end
 end
-token.primitive_tokens = primitives
+lmlt.primitive_tokens = primitives
 
 do
   local command_id = swap_table(token.getcommandvalues())
   function token.command_id(name) return command_id[name] end
 end
-token.value = swap_table(token.getfunctionvalues())
+lmlt.value = swap_table(token.getfunctionvalues())
+lmlt.flag = swap_table(tex.getflagvalues())
 
 local functions = lua.getfunctionstable()
 -- I am not sure why this is necessary, but otherwise LuaMetaTeX resets
@@ -71,7 +74,7 @@ local lua_call_cmd = token.command_id'lua_call'
 local lua_value_cmd = token.command_id'lua_value'
 local lua_protected_call_cmd = token.command_id'lua_protected_call'
 local if_test_cmd = token.command_id'if_test'
-function token.luacmd(name, func, ...)
+function lmlt.luacmd(name, func, ...)
   local idx
   local tok = token.create(name)
   local cmd = tok.command

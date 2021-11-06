@@ -12,7 +12,7 @@ lua.get_functions_table()[restore_func] = function()
     end
   end
 end
-local restore_toks = {token.primitive_tokens.atendofgroup , token.new(restore_func, token.command_id'lua_call')}
+local restore_toks = {luametalatex.primitive_tokens.atendofgroup , token.new(restore_func, token.command_id'lua_call')}
 local put_next = token.put_next
 local runlocal = tex.runlocal
 local function put_restore_toks()

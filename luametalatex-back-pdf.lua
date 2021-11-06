@@ -1,3 +1,5 @@
+local lmlt = luametalatex
+
 local scan_int = token.scan_int
 local scan_token = token.scan_token
 local scan_keyword = token.scan_keyword
@@ -21,6 +23,8 @@ local fontmap = require'luametalatex-pdf-font-map'
 local utils = require'luametalatex-pdf-utils'
 local strip_floats = utils.strip_floats
 local to_bp = utils.to_bp
+
+local immediate_flag = lmlt.flag.immediate
 
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
@@ -65,15 +69,15 @@ end
 local properties = node.direct.properties
 local reset_deadcycles do
   local tokens = {
-    token.primitive_tokens.global,
-    token.primitive_tokens.deadcycles,token.create(0x30),
-    token.primitive_tokens.relax,
+    lmlt.primitive_tokens.global,
+    lmlt.primitive_tokens.deadcycles,token.create(0x30),
+    lmlt.primitive_tokens.relax,
   }
   function reset_deadcycles()
     token.put_next(tokens)
   end
 end
-token.luacmd("shipout", function()
+lmlt.luacmd("shipout", function()
   local pfile = get_pfile()
   local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
   local voff = node.new'kern'
@@ -247,7 +251,7 @@ function callbacks.stop_run()
 end
 callbacks.__freeze('stop_run', true)
 
-token.luacmd("pdfvariable", function()
+lmlt.luacmd("pdfvariable", function()
   for _, n in ipairs(pdf.variable_names) do
     if scan_keyword(n) then
       return token.put_next(token.create('pdfvariable  ' .. n))
@@ -637,7 +641,7 @@ local function maybe_gobble_cmd(cmd)
     token.put_next(t)
   end
 end
-token.luacmd("pdffeedback", function()
+lmlt.luacmd("pdffeedback", function()
   if scan_keyword"colorstackinit" then
     local page = scan_keyword'page'
               or (scan_keyword'nopage' and false) -- If you want to pass "page" as mode
@@ -656,10 +660,10 @@ token.luacmd("pdffeedback", function()
     error(string.format("Unknown PDF feedback %s", scan_word()))
   end
 end)
-token.luacmd("pdfextension", function(_, immediate)
+lmlt.luacmd("pdfextension", function(_, immediate)
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    immediate = immediate & 0x8
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\pdfextension with a prefix that doesn't belong there. I will ignore it for now.")
   end
   if scan_keyword"colorstack" then
@@ -727,7 +731,7 @@ token.luacmd("pdfextension", function(_, immediate)
       local attr = scan_keyword'stream' and (scan_keyword'attr' and scan_string() or '')
       local isfile = scan_keyword'file'
       local content = scan_string()
-      if immediate == 8 then
+      if immediate == immediate_flag then
         if attr then
           pfile:stream(num, attr, content, isfile)
         else
@@ -850,11 +854,10 @@ local lastimage = -1
 local lastimagepages = -1
 
 -- These are very minimal right now but LaTeX isn't using the scaling etc. stuff anyway.
-token.luacmd("saveimageresource", function(_, immediate)
+lmlt.luacmd("saveimageresource", function(_, immediate)
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    print(immediate)
-    immediate = immediate & 0x8
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\saveimageresource with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local attr = scan_keyword'attr' and scan_string() or nil
@@ -880,24 +883,24 @@ token.luacmd("saveimageresource", function(_, immediate)
   local pfile = get_pfile()
   lastimage = imglib.get_num(pfile, img)
   lastimagepages = img.pages or 1
-  if immediate == 8 then
+  if immediate == immediate_flag then
     imglib_immediatewrite(pfile, img)
   end
 end, "value")
 
-token.luacmd("useimageresource", function()
+lmlt.luacmd("useimageresource", function()
   local pfile = get_pfile()
   local img = assert(imglib.from_num(scan_int()))
   imglib_write(pfile, img)
 end, "protected")
 
-local integer_code = token.value.integer
+local integer_code = lmlt.value.integer
 
-token.luacmd("lastsavedimageresourceindex", function()
+lmlt.luacmd("lastsavedimageresourceindex", function()
   return integer_code, lastimage
 end, "value")
 
-token.luacmd("lastsavedimageresourcepages", function()
+lmlt.luacmd("lastsavedimageresourcepages", function()
   return integer_code, lastimagepages
 end, "value")
 
@@ -919,10 +922,10 @@ tex.useboxresource = savedbox.use
 
 local lastbox = -1
 
-token.luacmd("saveboxresource", function(_, immediate)
+lmlt.luacmd("saveboxresource", function(_, immediate)
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    immediate = immediate & 0x8
+  if immediate and immediate & ~immediate_flag ~= 0 then
+    immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\saveboxresource with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local type
@@ -935,11 +938,11 @@ token.luacmd("saveboxresource", function(_, immediate)
   local margin = scan_keyword'margin' and scan_dimen() or nil
   local box = scan_int()
 
-  local index = tex.saveboxresource(box, attr, resources, immediate == 8, type, margin)
+  local index = tex.saveboxresource(box, attr, resources, immediate == immediate_flag, type, margin)
   lastbox = index
 end, "value")
 
-token.luacmd("useboxresource", function()
+lmlt.luacmd("useboxresource", function()
   local width, height, depth
   while true do
     if scan_keyword'width' then
@@ -956,7 +959,7 @@ token.luacmd("useboxresource", function()
   node.write((tex.useboxresource(index, width, height, depth)))
 end, "protected")
 
-token.luacmd("lastsavedboxresourceindex", function()
+lmlt.luacmd("lastsavedboxresourceindex", function()
   return integer_code, lastbox
 end, "value")
 
@@ -964,15 +967,15 @@ local saved_pos_x, saved_pos_y = -1, -1
 local save_pos_whatsit = declare_whatsit('save_pos', function(_, _, _, x, y)
   saved_pos_x, saved_pos_y = assert(math.tointeger(x)), assert(math.tointeger(y))
 end)
-token.luacmd("savepos", function() -- \savepos
+lmlt.luacmd("savepos", function() -- \savepos
   return node.direct.write(node.direct.new(whatsit_id, save_pos_whatsit))
 end, "protected")
 
-token.luacmd("lastxpos", function()
+lmlt.luacmd("lastxpos", function()
   return integer_code, (saved_pos_x+.5)//1
 end, "value")
 
-token.luacmd("lastypos", function()
+lmlt.luacmd("lastypos", function()
   return integer_code, (saved_pos_y+.5)//1
 end, "value")
 

@@ -10,7 +10,7 @@ function tex.gettextdir() return tex.textdirection end
 function tex.getlinedir() return tex.linedirection end
 function tex.getmathdir() return tex.mathdirection end
 function tex.getpardir()  return tex.pardirection  end
-local integer_code = token.value.integer
+local integer_code = luametalatex.value.integer
 local function set_xdir(id, scanning)
   if scanning == 'value' then
     return integer_code, getters[id]()
@@ -30,7 +30,7 @@ return function(name)
   local getter = tex["get" .. name]
   local setter = tex["set" .. name]
   assert(getter and setter, "direction parameter undefined")
-  local idx = token.luacmd(name, set_xdir, "protected", "global", "value")
+  local idx = luametalatex.luacmd(name, set_xdir, "protected", "global", "value")
   getters[idx] = getter
   setters[idx] = setter
   return idx

@@ -1,9 +1,11 @@
+local lmlt = luametalatex
+
 local scan_dimen = token.scan_dimen
 local scan_int = token.scan_int
 local scan_keyword = token.scan_keyword
 
-local count_code = token.value.integer
-local dimen_code = token.value.dimension
+local count_code = lmlt.value.integer
+local dimen_code = lmlt.value.dimension
 
 local set_local = require'luametalatex-local'
 
@@ -26,7 +28,7 @@ function texmeta.__newindex(t, k, v)
 end
 
 local function tex_variable(value, scanner, name, default)
-  token.luacmd(name, function(_, scanning)
+  lmlt.luacmd(name, function(_, scanning)
     if scanning == 'value' then
       return value, tex_variables[name]
     else
@@ -95,7 +97,7 @@ end
 
 local function pdf_variable(value, scanner, name, default, force_default)
   pdf_variable_names[#pdf_variable_names+1] = name
-  token.luacmd('pdfvariable  ' .. name, function(_, scanning)
+  lmlt.luacmd('pdfvariable  ' .. name, function(_, scanning)
     if scanning == 'value' then
       return value, real_pdf_variables[name]
     elseif force_default then
