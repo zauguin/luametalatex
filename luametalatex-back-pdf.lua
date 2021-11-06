@@ -1,4 +1,4 @@
-local scan_int = token.scan_integer
+local scan_int = token.scan_int
 local scan_token = token.scan_token
 local scan_keyword = token.scan_keyword
 local scan_string = token.scan_string

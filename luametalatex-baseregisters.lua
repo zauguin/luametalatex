@@ -1,5 +1,5 @@
 local scan_dimen = token.scan_dimen
-local scan_int = token.scan_integer
+local scan_int = token.scan_int
 local scan_keyword = token.scan_keyword
 
 local count_code = token.value.integer
@@ -117,7 +117,9 @@ end
 
 tex_variable(count_code, scan_int, 'suppressfontnotfounderror', 0)
 tex_variable(count_code, scan_int, 'outputmode', 1) -- The "traditional" default would be 0,
-                                                          -- but we do not actually support that.
+                                                    -- but we do not actually support that.
+tex_variable(count_code, scan_int, 'tracingscantokens', 0)
+
 tex_variable(dimen_code, scan_dimen, 'pageheight', 0)
 tex_variable(dimen_code, scan_dimen, 'pagewidth', 0)
 

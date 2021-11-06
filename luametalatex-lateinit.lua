@@ -14,6 +14,7 @@ pdf = {
 }
 require'luametalatex-font-resolve' -- Replace font.define. Must be loaded before callbacks
 require'luametalatex-basecallbacks'
+require'luametalatex-oldnames'
 local callbacks = require'luametalatex-callbacks'
 
 local function swap_table(t)
@@ -80,8 +81,8 @@ function token.luacmd(name, func, ...)
     idx = tok.index
   elseif cmd == lua_protected_call_cmd then
     idx = tok.index
-  elseif cmd == if_test_cmd and tok.index > 49 then
-    idx = tok.index - 49
+  elseif cmd == if_test_cmd and tok.index > 53 then
+    idx = tok.index - 53
   elseif ... == 'force' then
     idx = new_luafunction(name)
     set_lua(name, idx, select(2, ...))

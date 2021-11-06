@@ -31,7 +31,24 @@
   % so can now be read using the (emulated) primitives
   % This needs to be global so set \globaldefs for the rest of the group
   \globaldefs=1 %
-  \input{pdftexconfig}%
+  % \input{pdftexconfig}%
+  % Copied in here because the original uses `true` dimensions which aren't supported
+  \pdfoutput           = 1
+
+  % Paper size: dimensions given in absolute terms
+  \pdfpageheight       = 297 mm
+  \pdfpagewidth        = 210 mm
+
+  % Enable PDF 1.5 output and thus more compression
+  \pdfminorversion     = 5
+  \pdfobjcompresslevel = 2
+
+  % Low-level settings unlikely ever to need to change
+  \pdfcompresslevel    = 9
+  \pdfdecimaldigits    = 3
+  \pdfpkresolution     = 600
+  \pdfhorigin          = 1 in
+  \pdfvorigin          = 1 in
   % Pick up on a request for DVI mode and apply it whilst \pdfoutput is
   % still defined
   \ifx\dvimode\relax

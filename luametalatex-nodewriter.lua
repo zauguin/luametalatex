@@ -43,6 +43,7 @@ local get_whatsit_handler = require'luametalatex-whatsits'.handler
 local write_matrix -- Defined later
 
 local dir_id = node.id'dir'
+local glue_id = node.id'glue'
 
 local function doublekeyed(t, id2name, name2id, index)
   return setmetatable(t, {
@@ -356,7 +357,7 @@ function nodehandler.vlist(p, list, x, y0, outerlist, origin, level)
   local y = y0
   y = y + height
   for n in traverse(getlist(list)) do
-    local d, h, _ = 0, direct.effective_glue(n, list) or math.tointeger(getkern(n))
+    local d, h, _ = 0, getid(n) == glue_id and direct.effective_glue(n, list) or math.tointeger(getkern(n))
     if not h then
       _, h, d = direct.getwhd(n)
     end

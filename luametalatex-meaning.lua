@@ -10,9 +10,9 @@ local primitive_meaning = {
   token.primitive_tokens.meaning,
 }
 token.luacmd("meaning", function()
-  local peeked = token.peek_next()
+  local peeked = token.peeknext()
   token.put_next(primitive_meaning)
-  token.skip_next_expanded()
+  token.skipnextexpanded()
   if peeked.parameters == 0 then
     tex.sprint'->'
   end

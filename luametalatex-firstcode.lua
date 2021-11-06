@@ -1,7 +1,7 @@
-local scan_int = token.scan_integer
+local scan_int = token.scan_int
 token.scan_int = scan_int -- For compatibility with LuaTeX packages
 local scan_token = token.scan_token
-local scan_tokenlist = token.scan_tokenlist
+local scan_tokenlist = token.scantokenlist
 local scan_keyword = token.scan_keyword
 local scan_csname = token.scan_csname
 local set_macro = token.set_macro
@@ -77,15 +77,15 @@ end
 local open_whatsit = new_whatsit('open', do_openout)
 token.luacmd("openout", function(_, immediate) -- \openout
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    immediate = immediate & 0x8
+  if immediate and immediate & ~0x2000 ~= 0 then
+    immediate = immediate & 0x2000
     tex.error("Unexpected prefix", "You used \\openout with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   scan_keyword'='
   local name = scan_filename()
   local props = {file = file, name = name}
-  if immediate and immediate == 8 then
+  if immediate and immediate == 0x2000 then
     do_openout(props)
   else
     local whatsit = node.direct.new(whatsit_id, open_whatsit)
@@ -114,13 +114,13 @@ end
 local close_whatsit = new_whatsit('close', do_closeout)
 token.luacmd("closeout", function(_, immediate) -- \closeout
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    immediate = immediate & 0x8
+  if immediate and immediate & ~0x2000 ~= 0 then
+    immediate = immediate & 0x2000
     tex.error("Unexpected prefix", "You used \\closeout with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   local props = {file = file}
-  if immediate == 8 then
+  if immediate == 0x2000 then
     do_closeout(props)
   else
     local whatsit = node.direct.new(whatsit_id, close_whatsit)
@@ -148,16 +148,16 @@ local function do_write(p)
   end
 end
 local write_whatsit = new_whatsit('write', do_write)
-token.luacmd("write", function(_, immediate) -- \write
+token.luacmd("write", function(_, immediate, ...) -- \write
   if immediate == "value" then return end
-  if immediate and immediate & 0x7 ~= 0 then
-    immediate = immediate & 0x8
+  if immediate and immediate & ~0x2000 ~= 0 then
+    immediate = immediate & 0x2000
     tex.error("Unexpected prefix", "You used \\write with a prefix that doesn't belong there. I will ignore it for now.")
   end
   local file = scan_int()
   local content = scan_tokenlist()
   local props = {file = file, data = content}
-  if immediate == 8 then
+  if immediate == 0x2000 then
     do_write(props)
   else
     local whatsit = node.direct.new(whatsit_id, write_whatsit)
@@ -205,13 +205,13 @@ token.luacmd("read", function(_, prefix)
     end
     local endlocal
     tex.runlocal(function()
-      endlocal = token.scan_next()
+      endlocal = token.get_next()
       tex.sprint(endlocal)
       tex.print(line and line ~= "" and line or " ")
       tex.print(endlocal)
     end)
     while true do
-      local tok = token.scan_next()
+      local tok = token.get_next()
       if tok == endlocal then break end
       if tok.command == 1 then
         balance = balance + 1
