@@ -15,16 +15,17 @@ lmlt.luacmd("meaning", function()
   token.put_next(primitive_meaning)
   token.skipnextexpanded()
   if peeked.parameters == 0 then
-    tex.sprint'->'
+    local stash = ''
+    if peeked.protected then
+      if token.scankeywordcs'protected' then
+        token.skipnext()
+        token.skipnext()
+        stash = stash .. '\\protected '
+        print'protected'
+      end
+    end
+    token.scankeyword'macro:'
+    tex.sprint(-2, stash)
+    tex.sprint(-2, 'macro:->')
   end
-  --[[
-  if peeked.frozen then
-    assert(token.scan_keyword'frozen' and token.scan_code(0x400))
-    tex.sprint(-2, '\\frozen ')
-  end
-  if peeked.protected then
-    assert(token.scan_keyword'protected' and token.scan_code(0x400))
-    tex.sprint(-2, '\\protected ')
-  end
-  ]]
 end, "force", "global")
