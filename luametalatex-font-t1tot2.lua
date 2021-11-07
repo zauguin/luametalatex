@@ -258,18 +258,21 @@ local function adjust_charstring(cs) -- Here we get a not yet optimized but pars
   local i = 1
   while cs[i] ~= nil do
     if cs[i] and cs[i].idx then
-      for l = 1, math.floor((j + 7)/8) do
-        bytes[l] = 0
+      if stem3[2] then
+        local s3 = stem3[2]
+        for l = 1, math.floor((j + 7)/8) do
+          bytes[l] = string.byte(s3, l)
+        end
+      else
+        for l = 1, math.floor((j + 7)/8) do
+          bytes[l] = 0
+        end
       end
       while (cs[i] or {}).idx do
         local idx = cs[i].idx-1
         bytes[math.floor(idx/8) + 1] = bytes[math.floor(idx/8) + 1] | (1<<(7-idx%8))
         cs[i] = false
         i = i+1
-      end
-      for l = 2, #stem3 do
-        local idx = stem3[l].idx-1
-        bytes[math.floor(idx/8) + 1] = bytes[math.floor(idx/8) + 1] | (1<<(7-idx%8))
       end
       i = i-1
       cs[i] = {19, string.char(table.unpack(bytes))}
