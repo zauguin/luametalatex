@@ -7,6 +7,9 @@ local function rewrite(t)
   return handler
 end
 
+rewrite(tex)
+  ('runtoks', 'runlocal')
+
 rewrite(language)
   ('clear_hyphenation', 'clearhyphenation')
   ('clear_patterns', 'clearpatterns')
@@ -70,3 +73,5 @@ rewrite(token)
   ('scan_toks', 'scantoks')
   ('scan_word', 'scanword')
   ('set_lua', 'setlua')
+  ('set_macro', 'setmacro')
+  ('set_char', 'setchar')
