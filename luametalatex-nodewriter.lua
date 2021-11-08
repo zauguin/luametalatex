@@ -626,12 +626,14 @@ vf = {
 }
 function nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
   if getfont(n) ~= p.vfont.fid then
-    p.vfont.fid = getfont(n)
-    p.vfont.font = font.getfont(getfont(n)) or font.fonts[getfont(n)]
+    local fid = getfont(n)
+    p.vfont.fid = fid
+    p.vfont.font = font.fonts[fid]
   end
   local f, fid = p.vfont.font, p.vfont.fid
   local cid = getchar(n)
-  local c = f.characters[cid]
+  local c = f and f.characters
+  c = c and c[cid]
   if not c then
     texio.write_nl("Missing character")
     return
@@ -704,8 +706,10 @@ function pdf.write(mode, text, x, y, p)
     topage(p)
     p.strings[#p.strings + 1] = text
   elseif mode == "direct" then
-    if p.mode ~= page then
+    if p.mode < page then
       totext(p, p.font.fid)
+    elseif p.mode > page then
+      topage(p)
     end
     p.strings[#p.strings + 1] = text
   elseif mode == "origin" then

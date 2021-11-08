@@ -120,6 +120,7 @@ end
 tex_variable(count_code, scan_int, 'suppressfontnotfounderror', 0)
 tex_variable(count_code, scan_int, 'outputmode', 1) -- The "traditional" default would be 0,
                                                     -- but we do not actually support that.
+tex_variable(count_code, scan_int, 'mag', 1000)     -- Let's hope that noone wants to use these
 tex_variable(count_code, scan_int, 'tracingscantokens', 0)
 
 tex_variable(dimen_code, scan_dimen, 'pageheight', 0)

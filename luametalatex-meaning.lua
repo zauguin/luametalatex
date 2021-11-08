@@ -10,11 +10,12 @@ local primitive_meaning = {
   lmlt.primitive_tokens.relax,
   lmlt.primitive_tokens.meaning,
 }
+local call_cmd = token.command_id'call'
 lmlt.luacmd("meaning", function()
   local peeked = token.peeknext()
   token.put_next(primitive_meaning)
   token.skipnextexpanded()
-  if peeked.parameters == 0 then
+  if peeked.parameters == 0 or (peeked.command == call_cmd and not peeked.parameters) then
     local stash = ''
     if peeked.protected then
       if token.scankeywordcs'protected' then
