@@ -21,7 +21,6 @@ lmlt.luacmd("meaning", function()
         token.skipnext()
         token.skipnext()
         stash = stash .. '\\protected '
-        print'protected'
       end
     end
     token.scankeyword'macro:'

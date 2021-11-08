@@ -110,10 +110,7 @@ if initex then
 
     local prepared = lua.prepared_code
     prepared[1] = string.format("fixupluafunctions(%i)", predefined_luafunctions)
-    --[[
-    for i=0,0 do -- maybeFIXME: In practise only one language is preloaded in LuaTeX anyway
-    -- for i=0,tex.count[19] do -- Sometimes catches reserved language ids which are not used yet
-    -- for i=0,lang.new():id()-1 do -- lang.new():id() is always 0 in luametatex?!?
+    for i=0,status.languagestate.ptr do
       local l = language.new(i)
       local str = string.format("do \z
         local l = language.new(%i)\z
@@ -141,7 +138,6 @@ if initex then
       end
       prepared[#prepared+1] = str
     end
-    ]]
     for i=2,#prepared do
       if type(prepared[i]) ~= 'string' then
         prepared[i] = assert(prepared[i]())
