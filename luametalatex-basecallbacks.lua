@@ -35,7 +35,7 @@ if status.ini_version then
     callbacks.find_data_file = nil
   end
   function callbacks.find_data_file(name)
-    if name == 'ltexpl.ltx' then
+    if name == 'expl3.ltx' then
       name = 'luametalatex-ltexpl-hook'
     end
     return kpse.find_file(name, 'tex', true)
