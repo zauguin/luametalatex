@@ -835,6 +835,8 @@ lmlt.luacmd("pdfextension", function(_, immediate)
       error[[Unsupported dest type]]
     end
     node.write(whatsit)
+  elseif scan_keyword'mapfile' then
+    fontmap.mapfile(scan_string())
   elseif scan_keyword'mapline' then
     fontmap.mapline(scan_string())
   else
