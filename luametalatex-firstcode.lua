@@ -55,7 +55,6 @@ do
   end
 end
 
-
 local new_whatsit = require'luametalatex-whatsits'.new
 local whatsit_id = node.id'whatsit'
 local spacer_cmd, relax_cmd = token.command_id'spacer', token.command_id'relax'
@@ -98,12 +97,18 @@ local immediate_flag = lmlt.flag.immediate
 local l = lpeg or require'lpeg'
 local add_file_extension = l.Cs((1-('.' * (1-l.S'./\\')^0) * -1)^0 * (l.P(1)^1+l.Cc'.tex'))
 local ofiles, ifiles = {}, {}
+local output_directory = arg['output-directory']
+local dir_sep = '/' -- FIXME
 local function do_openout(p)
   if ofiles[p.file] then
     ofiles[p.file]:close()
   end
   local msg
-  ofiles[p.file], msg = io.open(add_file_extension:match(p.name), 'w')
+  local name = add_file_extension:match(p.name)
+  if output_directory then
+    name = output_directory .. dir_sep .. name
+  end
+  ofiles[p.file], msg = io.open(name, 'w')
   if not ofiles[p.file] then
     error(msg)
   end

@@ -104,6 +104,7 @@ end
 
 if initex then
   local build_bytecode = nil -- To be filled
+  local output_directory = arg['output-directory']
   function callbacks.pre_dump()
     local user_callback = callbacks.pre_dump
     if user_callback then user_callback() end
@@ -144,6 +145,9 @@ if initex then
       end
     end
     lua.bytecode[tex.count[262]+1] = build_bytecode(table.concat(prepared, '\n'))
+    if output_directory then
+      lfs.chdir(output_directory) -- We can't change the location TeX writes it's format to, so we change the current directory instead
+    end
   end
   callbacks.__freeze('pre_dump', true)
   return function(f)

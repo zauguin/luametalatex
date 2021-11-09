@@ -51,10 +51,15 @@ local colorstacks = {{
     page_stack = {"0 g 0 G"},
   }}
 local spacer_cmd = token.command_id'spacer'
+local output_directory = arg['output-directory']
+local dir_sep = '/' -- FIXME
 local function get_pfile()
   if not pfile then
     pdfname = tex.jobname .. '.pdf'
-    pfile = newpdf.open(tex.jobname .. '.pdf')
+    if output_directory then
+      pdfname = output_directory .. dir_sep .. pdfname
+    end
+    pfile = newpdf.open(pdfname)
   end
   return pfile
 end

@@ -4,6 +4,27 @@ local read_tfm = font.read_tfm
 local font_define = font.define
 local callbacks = require'luametalatex-callbacks'
 
+local find_file = kpse.find_file
+local output_directory = arg['output-directory']
+
+local dir_sep = '/' -- FIXME
+
+if output_directory then
+  local old_find_file = find_file
+  local kpse_absolute = kpse.is_absolute
+  local attributes = lfs.attributes
+  function find_file(path, kind, must_exists)
+    --kind is always "tex"
+    if not kpse_absolute(path) then
+      local new_path = output_directory .. dir_sep .. path
+      if attributes(new_path, 'mode') == 'file' then
+        return new_path
+      end
+    end
+    return old_find_file(path, kind, must_exists)
+  end
+end
+
 if status.ini_version then
   function callbacks.define_font(name, size)
     local f = read_tfm(name, size)
@@ -26,7 +47,11 @@ else
 end
 callbacks.__freeze'define_font'
 
-function callbacks.find_log_file(name) return name end
+if output_directory then
+  function callbacks.find_log_file(name) return output_directory .. dir_sep .. name end
+else
+  function callbacks.find_log_file(name) return name end
+end
 callbacks.__freeze'find_log_file'
 
 -- find_data_file is not an engine callback in luametatex, so we don't __freeze it
@@ -38,11 +63,11 @@ if status.ini_version then
     if name == 'expl3.ltx' then
       name = 'luametalatex-ltexpl-hook'
     end
-    return kpse.find_file(name, 'tex', true)
+    return find_file(name, 'tex', true)
   end
 end
   local function normal_find_data_file(name)
-    return kpse.find_file(name, 'tex', true)
+    return find_file(name, 'tex', true)
   end
 function callbacks.open_data_file(name)
   local find_callback = callbacks.find_data_file
@@ -50,7 +75,7 @@ function callbacks.open_data_file(name)
   if find_callback then
     path = find_callback(name)
   else
-    path = kpse.find_file(name, 'tex', true)
+    path = find_file(name, 'tex', true)
   end
   if not path then return end
 
