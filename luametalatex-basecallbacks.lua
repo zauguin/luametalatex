@@ -133,8 +133,12 @@ function callbacks.intercept_tex_error(mode, errortype)
     return 3
   end
   texio.write'.'
+  if mode == 0 then return 0 end
   tex.showcontext()
-  if mode ~= 3 then return mode end
+  if mode ~= 3 then
+    texio.write('logfile', tex.gethelptext() .. '\n')
+    return mode
+  end
   repeat
     texio.write_nl'? '
     local line = io.read()
