@@ -75,3 +75,50 @@ rewrite(token)
   ('set_lua', 'setlua')
   ('set_macro', 'setmacro')
   ('set_char', 'setchar')
+  ('is_defined', 'isdefined')
+
+do
+  lang = {}
+  for k,v in next, language do
+    lang[k] = v
+  end
+  local patterns = language.patterns
+  function lang.patterns(l, patt)
+    if not patt then
+      return patterns(l)
+    end
+    patt = patt:gsub('%s', ' ')
+    return patterns(l, patt)
+  end
+end
+
+do
+  local l = lpeg or require'lpeg'
+  local match = l.match
+  local P = l.P
+  local C = l.C
+  local sub = string.sub
+  local any = C(P(1)^0)
+  local char = C(1)
+  function string.explode(s, delim)
+    delim = delim or ' +'
+    if s == '' then
+      return {s}
+    else
+      local patt
+      if delim == '' then -- Split into individual characters
+        patt = char
+      else
+        local del = P(sub(delim, 1, 1))
+        if sub(delim, 2, 2) == '+' then
+          local elem = C((1-del)^1)
+          patt = del^0 * elem * (del^1 * elem)^0
+        else
+          local elem = C((1-del)^0)
+          patt = elem * (del * elem)^0
+        end
+      end
+      return {match(patt, s)}
+    end
+  end
+end

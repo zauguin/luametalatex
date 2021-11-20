@@ -14,6 +14,10 @@ font.fonts = all_fonts
 function font.getfont(id)
   return all_fonts[id]
 end
+-- Currently either nil or true, false (defined but not yet frozen) isn't implemented right now
+function font.frozen(id)
+  return all_fonts[id] and true
+end
 
 local fontextensions = {
   ttf = "truetype",
