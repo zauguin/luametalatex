@@ -124,49 +124,60 @@ local do_terminal_input do
   end
 end
 
-local errorvalues = tex.geterrorvalues()
-function callbacks.intercept_tex_error(mode, errortype)
-  errortype = errorvalues[errortype]
-  if errortype == "eof" then
-    -- print('EOF', token.peek_next())
-    token.put_next(token.create'ABD')
+do
+  local errorvalues = tex.geterrorvalues()
+  local function intercept(mode, errortype)
+    errortype = errorvalues[errortype]
+    if errortype == "eof" then
+      -- print('EOF', token.peek_next())
+      token.put_next(token.create'ABD')
+      return 3
+    end
+    texio.write'.'
+    if mode == 0 then return 0 end
+    tex.showcontext()
+    if mode ~= 3 then
+      texio.write('logfile', tex.gethelptext() .. '\n')
+      return mode
+    end
+    repeat
+      texio.write_nl'? '
+      local line = io.read()
+      if not line then
+        tex.fatalerror'End of line encountered on terminal'
+      end
+      if line == "" then return 3 end
+      local first = line:sub(1,1):upper()
+      if first == 'H' then
+        texio.write(tex.gethelptext() or "Sorry, I don't know how to help in this situation.\n\z
+          Maybe you should try asking a human?")
+      elseif first == 'I' then
+        line = line:sub(2)
+        tex.runlocal(function()
+          tex.sprint(token.scan_token(), line)
+        end)
+        return 3
+      elseif first == 'Q' then texio.write'OK, entering \\batchmode...\n' return 0
+      elseif first == 'R' then texio.write'OK, entering \\nonstopmode...\n' return 1
+      elseif first == 'S' then texio.write'OK, entering \\scrollmode...\n' return 2
+      elseif first == 'X' then return -1
+      else
+        texio.write'Type <return> to proceed, S to scroll future error messages,\
+\z        R to run without stopping, Q to run quietly,\
+\z        I to insert something,\
+\z        H for help, X to quit.'
+      end
+    until false
     return 3
   end
-  texio.write'.'
-  if mode == 0 then return 0 end
-  tex.showcontext()
-  if mode ~= 3 then
-    texio.write('logfile', tex.gethelptext() .. '\n')
-    return mode
-  end
-  repeat
-    texio.write_nl'? '
-    local line = io.read()
-    if not line then
-      tex.fatalerror'End of line encountered on terminal'
-    end
-    if line == "" then return 3 end
-    local first = line:sub(1,1):upper()
-    if first == 'H' then
-      texio.write(tex.gethelptext() or "Sorry, I don't know how to help in this situation.\n\z
-        Maybe you should try asking a human?")
-    elseif first == 'I' then
-      line = line:sub(2)
-      tex.runlocal(function()
-        tex.sprint(token.scan_token(), line)
+  function callbacks.intercept_tex_error(mode, errortype)
+    local ret = intercept(mode, errortype)
+    if tex.deadcycles >= tex.maxdeadcycles then
+      tex.runtoks(function()
+        tex.sprint(1, '\\shipout\\box255')
       end)
-      return 3
-    elseif first == 'Q' then texio.write'OK, entering \\batchmode...\n' return 0
-    elseif first == 'R' then texio.write'OK, entering \\nonstopmode...\n' return 1
-    elseif first == 'S' then texio.write'OK, entering \\scrollmode...\n' return 2
-    elseif first == 'X' then return -1
-    else
-      texio.write'Type <return> to proceed, S to scroll future error messages,\
-\z      R to run without stopping, Q to run quietly,\
-\z      I to insert something,\
-\z      H for help, X to quit.'
     end
-  until false
-  return 3
+    return ret
+  end
 end
 callbacks.__freeze'intercept_tex_error'
