@@ -135,9 +135,11 @@ do
     end
     texio.write'.'
     if mode == 0 then return 0 end
+    local help = tex.gethelptext() or "Sorry, I don't know how to help in this situation.\n\z
+      Maybe you should try asking a human?"
     tex.showcontext()
     if mode ~= 3 then
-      texio.write('logfile', tex.gethelptext() .. '\n')
+      texio.write('logfile', help .. '\n')
       return mode
     end
     repeat
@@ -149,8 +151,7 @@ do
       if line == "" then return 3 end
       local first = line:sub(1,1):upper()
       if first == 'H' then
-        texio.write(tex.gethelptext() or "Sorry, I don't know how to help in this situation.\n\z
-          Maybe you should try asking a human?")
+        texio.write(help)
       elseif first == 'I' then
         line = line:sub(2)
         tex.runlocal(function()
@@ -174,7 +175,7 @@ do
     local ret = intercept(mode, errortype)
     if tex.deadcycles >= tex.maxdeadcycles then
       tex.runtoks(function()
-        tex.sprint(1, '\\shipout\\box255')
+        tex.sprint(1, '\\shipout\\box\\outputbox')
       end)
     end
     return ret
