@@ -26,6 +26,8 @@ local to_bp = utils.to_bp
 
 local immediate_flag = lmlt.flag.immediate
 
+local initex_catcodetable = 1
+
 local pdfname, pfile
 local fontdirs = setmetatable({}, {__index=function(t, k)t[k] = pfile:getobj() return t[k] end})
 local nodefont_meta = {}
@@ -72,22 +74,31 @@ local function get_outline()
   return outline
 end
 local properties = node.direct.properties
-local reset_deadcycles do
-  local tokens = {
-    lmlt.primitive_tokens.global,
-    lmlt.primitive_tokens.deadcycles,token.create(0x30),
-    lmlt.primitive_tokens.relax,
-  }
-  function reset_deadcycles()
+local begin_group do
+  local tokens = lmlt.primitive_tokens.begingroup
+  function begin_group()
     token.put_next(tokens)
   end
 end
+local finalize_shipout do
+  local showbox_token = lmlt.primitive_tokens.showbox
+  local global_token = lmlt.primitive_tokens.global
+  local deadcycles_token = lmlt.primitive_tokens.deadcycles
+  local endgroup_token = lmlt.primitive_tokens.endgroup
+  function finalize_shipout()
+    if tex.tracingoutput > 0 then
+      tex.sprint(initex_catcodetable, showbox_token, 'content diagnose 0')
+    end
+    tex.sprint(initex_catcodetable, global_token, deadcycles_token, '0', endgroup_token)
+  end
+end
 lmlt.luacmd("shipout", function()
+  local outlist = scan_box()
   local pfile = get_pfile()
   local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
   local voff = node.new'kern'
   voff.kern = total_voffset
-  voff.next = scan_box()
+  voff.next = outlist
   voff.next.shift = total_hoffset
   local list = node.direct.tonode(node.direct.vpack(node.direct.todirect(voff)))
   local pageheight, pagewidth = tex.pageheight, tex.pagewidth
@@ -101,8 +112,11 @@ lmlt.luacmd("shipout", function()
   cur_page = nil
   local content = pfile:stream(nil, '', out)
   pfile:indirect(page, string.format([[<</Type/Page/Parent %i 0 R/Contents %i 0 R/MediaBox[0 %i %i %i]/Resources%s%s%s%s>>]], parent, content, -math.ceil(to_bp(list.depth)), math.ceil(to_bp(list.width)), math.ceil(to_bp(list.height)), resources(pdfvariable.pageresources .. pdf.pageresources), annots, pdfvariable.pageattr, pdf.pageattributes))
-  node.flush_list(list)
-  tex.runlocal(reset_deadcycles)
+  tex.runlocal(begin_group)
+  tex.box[0] = outlist
+  list.head.next = nil
+  node.free(list)
+  tex.runlocal(finalize_shipout)
 end, 'force', 'protected')
 
 local infodir = ""
