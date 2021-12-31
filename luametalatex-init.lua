@@ -3,7 +3,7 @@ do
   ourpath, texconfig.formatname = lua.startupfile:match('(.*[/\\])([^/\\]*)%-init%.lua$')
   local function try_lib(name)
     local path = string.format('%s%s.%s', ourpath, name,
-      os.type == 'windows' and 'dll' or os.type == 'macosx' and 'dylib' or 'so')
+      os.type == 'windows' and 'dll' or os.name == 'macosx' and 'dylib' or 'so')
     local lib, msg = package.loadlib(path, '*')
     if lib then
       return path
