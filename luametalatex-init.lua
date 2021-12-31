@@ -4,7 +4,12 @@ do
   local function try_lib(name)
     local path = string.format('%s%s.%s', ourpath, name,
       os.type == 'windows' and 'dll' or os.type == 'macosx' and 'dylib' or 'so')
-    return package.loadlib(path, '*') and path
+    local lib, msg = package.loadlib(path, '*')
+    if lib then
+      return path
+    else
+      print(msg)
+    end
   end
   local library  = try_lib'luametalatex' or try_lib'kpse'
   if not library then
