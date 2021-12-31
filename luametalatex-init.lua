@@ -3,7 +3,7 @@ do
   ourpath, texconfig.formatname = lua.startupfile:match('(.*[/\\])([^/\\]*)%-init%.lua$')
   local function try_lib(name)
     local path = string.format('%s%s.%s', ourpath, name,
-      os.type == 'windows' and 'dll' or 'so')
+      os.type == 'windows' and 'dll' or os.type == 'macosx' and 'dylib' or 'so')
     return package.loadlib(path, '*') and path
   end
   local library  = try_lib'luametalatex' or try_lib'kpse'
