@@ -181,8 +181,6 @@ local function boxrotation(p, list, x, y)
       return x, y, direct.getwhd(list)
     end
   end
-  print(x, y, direct.getwhd(list))
-  print(getorientation(list))
   local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
   x, y = x + xoff, y + yoff
   local baseorientation = orientation & 0xF
