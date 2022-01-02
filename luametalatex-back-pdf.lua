@@ -570,6 +570,17 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
   end
   pdf.write(colorstack.mode, stack[#stack], x, y, p)
 end)
+local link_state_whatsit = declare_whatsit('pdf_link_state', function(prop, p, n, x, y)
+  if not p.is_page then return end
+  local value = prop and prop.value
+  if not value then
+    tex.error('Invalid pdf_link_state whatsit', {"A pdf_link_state whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+  end
+  if value == 0 or value == 1 then
+    p.linkstate = value == 1 and 1 or nil
+  end
+end)
 local function write_colorstack()
   local idx = scan_int()
   local colorstack = colorstacks[idx + 1]
@@ -855,6 +866,14 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     fontmap.mapfile(scan_string())
   elseif scan_keyword'mapline' then
     fontmap.mapline(scan_string())
+  elseif scan_keyword'linkstate' then
+    local value = scan_int()
+    local whatsit = node.new(whatsit_id, link_state_whatsit)
+    local prop = {
+      value = value,
+    }
+    node.setproperty(whatsit, prop)
+    node.write(whatsit)
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.

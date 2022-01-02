@@ -325,7 +325,7 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
     dirnodes[dirstack[i]] = rangedimensions(list, dirstack[i])
   end
   local linkcontext = p.linkcontext
-  if linkcontext then
+  if linkcontext and not p.linkstate then
     linkcontext:set(p, x, y, list, level+1, 'start')
   end
   for n, id, sub in traverse(getlist(list)) do
@@ -355,7 +355,7 @@ function nodehandler.hlist(p, list, x0, y, outerlist, origin, level)
     end
   end
   linkcontext = p.linkcontext
-  if linkcontext then
+  if linkcontext and not p.linkstate then
     linkcontext:set(p, x, y, list, level+1, 'end')
   end
   endboxrotation(p, list, x0, y)
@@ -759,7 +759,8 @@ local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks, resources)
     pending_matrix = {},
     resources = resources,
     annots = {},
-    linkcontext = file.linkcontext,
+    linkcontext = colorstacks and file.linkcontext,
+    linkstate = colorstacks and file.linkstate,
     fontdirs = fontdirs,
     usedglyphs = usedglyphs,
   }
@@ -777,6 +778,10 @@ local function nodewriter(file, n, fontdirs, usedglyphs, colorstacks, resources)
   nodehandler[getid(n)](p, n, 0, 0, n, nil, 0)
   -- nodehandler[getid(n)](p, n, 0, getdepth(n), n)
   topage(p)
+  if colorstacks then
+    file.linkcontext = p.linkcontext
+    file.linkstate = p.linkstate
+  end
   return concat(p.strings, '\n'), resources, (p.annots[1] and string.format("/Annots[%s]", table.concat(p.annots, ' ')) or "")
 end
 require'luametalatex-pdf-savedbox':init_nodewriter(nodewriter)
