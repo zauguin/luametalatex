@@ -92,7 +92,9 @@ local finalize_shipout do
     tex.sprint(initex_catcodetable, global_token, deadcycles_token, '0', endgroup_token)
   end
 end
-lmlt.luacmd("shipout", function()
+-- LaTeX overwrites \shipout, so we try to set the expl3 alias instead if it's already defined.
+-- This ensures that we do not overwrite the redefinition.
+lmlt.luacmd(token.isdefined'tex_shipout:D' and 'tex_shipout:D' or 'shipout', function()
   local outlist = scan_box()
   local pfile = get_pfile()
   local total_voffset, total_hoffset = tex.voffset + pdfvariable.vorigin, tex.hoffset + pdfvariable.horigin
