@@ -57,15 +57,15 @@ function font.define(f)
     end
   end
   local format = f.format or "unknown"
-  local encodingbytes = f.encodingbytes or (f.format:sub(5) == "type" and 2 or 1)
+  local encodingbytes = f.encodingbytes or (format:sub(5) == "type" and 2 or 1)
   f.encodingbytes = encodingbytes
-  if encodingbytes == 1 and f.type ~= 'virtual' and f.format ~= 'type3node' then
+  if encodingbytes == 1 and f.type ~= 'virtual' and format ~= 'type3node' then
     -- map file lookup
     local entry = fontmap[f.name]
     if entry then
       local filename = entry[3]
       local format
-      if f.format == 'unknown' then
+      if format == 'unknown' then
         f.format = filename and filename:sub(-4, -4) == '.' and fontextensions[filename:sub(-3, -1)] or 'type1'
       end
       f.filename = filename
