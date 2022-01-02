@@ -169,7 +169,7 @@ end
 
 local function boxrotation(p, list, x, y)
   local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
-  if not orientation then return x, y, direct.getwhd(list) end
+  if true or not orientation then return x, y, direct.getwhd(list) end
   x, y = x + xoff, y + yoff
   local baseorientation = orientation & 0xF
   local v_anchor = (orientation & 0xF0) >> 4
