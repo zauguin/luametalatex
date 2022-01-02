@@ -30,6 +30,7 @@ local getchar = direct.getchar
 local rangedimensions = direct.rangedimensions
 local traverse_id = direct.traverse_id
 local getdata = direct.getdata
+local getgeometry = direct.getgeometry
 local getorientation = direct.getorientation
 
 local utils = require'luametalatex-pdf-utils'
@@ -168,8 +169,21 @@ local function toglyph(p, fid, x, y, exfactor)
 end
 
 local function boxrotation(p, list, x, y)
+  local _, displaced, orientation, anchor = getgeometry(list)
+  if anchor then
+    error'anchors are not yet supported'
+  end
+  if not orientation then
+    if displaced then
+      local _, xoff, yoff, woff, hoff, doff = getorientation(list)
+      return x + xoff, y + yoff, woff, hoff, doff
+    else
+      return x, y, direct.getwhd(list)
+    end
+  end
+  print(x, y, direct.getwhd(list))
+  print(getorientation(list))
   local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
-  if true or not orientation then return x, y, direct.getwhd(list) end
   x, y = x + xoff, y + yoff
   local baseorientation = orientation & 0xF
   local v_anchor = (orientation & 0xF0) >> 4
@@ -249,8 +263,12 @@ local function boxrotation(p, list, x, y)
 end
 
 local function endboxrotation(p, list, x, y)
-  local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
+  local _, displaced, orientation, anchor = getgeometry(list)
+  if anchor then
+    error'anchors are not yet supported'
+  end
   if not orientation then return end
+  local orientation, xoff, yoff, woff, hoff, doff = getorientation(list)
   local orientation = orientation & 0xF
   -- assert(orientation & 8 == 0)
   if orientation & 4 == 4 or orientation == 0 then
