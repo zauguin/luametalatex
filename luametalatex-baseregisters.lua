@@ -30,7 +30,6 @@ end
 
 local function tex_variable(value, scanner, name, default)
   lmlt.luacmd(name, function(_, scanning)
-    if name == 'pageheight' then print('pageheight', scanning) end
     if scanning == 'value' then
       return value, tex_variables[name]
     else
