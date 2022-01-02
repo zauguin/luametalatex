@@ -408,7 +408,7 @@ end
 -- but for now we just accept them. This approach might be a bit faster, but it leads to a few issue due to directions etc.
 -- so it might change soon(ish) TODO: Review
 function nodehandler.disc(p, n, x, y, list, ...)
-  for n in traverse(getreplace(n)) do
+  for n in traverse((getreplace(n))) do
     local next = getnext(n)
     local w = next and rangedimensions(list, n, next) or rangedimensions(list, n)
     nodehandler[getid(n)](p, n, x, y, list, ...)

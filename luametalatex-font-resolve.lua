@@ -77,6 +77,12 @@ function font.define(f)
       f.format = "type3"
     end
   end
+  local parameters = f.parameters
+  if parameters then
+    rawset(parameters, 'spacestretch', rawget(parameters, 'spacestretch') or rawget(parameters, 'space_stretch'))
+    rawset(parameters, 'spaceshrink', rawget(parameters, 'spaceshrink') or rawget(parameters, 'space_shrink'))
+    rawset(parameters, 'xheight', rawget(parameters, 'xheight') or rawget(parameters, 'x_height'))
+  end
   local id = old_font_define(f)
   all_fonts[id] = f
   if f.fonts then
