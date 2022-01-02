@@ -50,6 +50,12 @@ local functions = lua.getfunctionstable()
 -- the functions table every time the getter is called
 function lua.get_functions_table() return functions end
 local set_lua = token.set_lua
+
+local if_offset do
+  local _
+  _, _, if_offset, _ = token.getrange(token.new('if_test', 0))
+end
+
 -- There are two approaches to manage luafunctions ids without triggering
 -- issues with ltluatex assigned numbers: Originally we assigned numbers
 -- starting with 1, then switched to luatexbase ASAP and synchronised both
@@ -84,8 +90,8 @@ function lmlt.luacmd(name, func, ...)
     idx = tok.index
   elseif cmd == lua_protected_call_cmd then
     idx = tok.index
-  elseif cmd == if_test_cmd and tok.index > 53 then
-    idx = tok.index - 53
+  elseif cmd == if_test_cmd and tok.index > if_offset then
+    idx = tok.index - if_offset
   elseif ... == 'force' then
     idx = new_luafunction(name)
     set_lua(name, idx, select(2, ...))
