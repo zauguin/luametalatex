@@ -4,8 +4,9 @@ local scan_dimen = token.scan_dimen
 local scan_int = token.scan_int
 local scan_keyword = token.scan_keyword
 
-local count_code = lmlt.value.integer
-local dimen_code = lmlt.value.dimension
+local count_code  = lmlt.value.integer
+local dimen_code  = lmlt.value.dimension
+local global_code = lmlt.flag.global
 
 local set_local = require'luametalatex-local'
 
@@ -29,11 +30,12 @@ end
 
 local function tex_variable(value, scanner, name, default)
   lmlt.luacmd(name, function(_, scanning)
+    if name == 'pageheight' then print('pageheight', scanning) end
     if scanning == 'value' then
       return value, tex_variables[name]
     else
       scan_keyword'='
-      return set_local(tex_variables, name, scanner(), scanning and scanning & 4 == 4)
+      return set_local(tex_variables, name, scanner(), scanning and scanning & global_code == global_code)
     end
   end, 'global', 'value')
   if status.ini_version then
