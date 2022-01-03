@@ -335,7 +335,7 @@ local functions = lua.get_functions_table()
 require'luametalatex-meaning'
 require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
-require'luametalatex-node-luaotfload'
+require'luametalatex-oldnode'
 
 lmlt.luacmd("Umathcodenum", function(_, scanning)
   if scanning then

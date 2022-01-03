@@ -22,13 +22,63 @@
     }!
   }!
   \noexpand\luametalatex@@everyjobandnow{\noexpand\directlua{!
-    lua.get_functions_table()[\the\luametalatex@@expandglyphsinfont] = function()
+    local func = luatexbase.new_luafunction'expandglyphsinfont'
+    token.setlua('pdffontexpand', func, 'protected')
+    lua.get_functions_table()[func] = function()
       token.put_next(token.create'fontid')
-      local font = token.scan_int()
-      local stretch = token.scan_int()
-      local shrink = token.scan_int()
-      local step = token.scan_int()
+      local font = token.scaninteger()
+      local stretch = token.scaninteger()
+      local shrink = token.scaninteger()
+      local step = token.scaninteger()
       token.set_macro('pickup@font@@hook@luametalatex@microtype@' .. font, string.format("{}{%i}{%i}{%i}", stretch, shrink, step), "global")
+    end
+    local set_font_cmd = token.command_id'set_font'
+    local char_given_cmd = token.command_id'other_char'
+    func = luatexbase.new_luafunction'rpcode'
+    token.setlua('rpcode', func, 'value')
+    lua.get_functions_table()[func] = function(id, value)
+      token.putnext(luametalatex.primitive_tokens.fontid)
+      local fid = token.scaninteger()
+      local cid = token.scaninteger()
+      local quad = font.getfontdimen(fid, 6)/1000 ! 6 - quad
+      if value == 'value' then
+        token.put_next(luametalatex.primitive_tokens.rpcode, token.new(fid, set_font_cmd), token.new(cid, char_given_cmd))
+        token.skipnext()
+        token.skipnext()
+        token.put_next(luametalatex.primitive_tokens.lpcode, token.new(fid, set_font_cmd), token.create(string.byte'`'), token.new(cid, char_given_cmd))
+        local raw = token.scan_dimen()
+        return luametalatex.value.integer, (raw / quad + .5)//1
+      else
+        token.scan_keyword'='
+        local factor = token.scaninteger()
+        tex.runtoks(function()
+          token.put_next(luametalatex.primitive_tokens.rpcode, token.new(fid, set_font_cmd), token.create(string.byte'`'), token.new(cid, char_given_cmd), token.new('dimension', (factor * quad + .5)//1))
+        end)
+        return
+      end
+    end
+    func = luatexbase.new_luafunction'lpcode'
+    token.setlua('lpcode', func, 'value')
+    lua.get_functions_table()[func] = function(id, value)
+      token.putnext(luametalatex.primitive_tokens.fontid)
+      local fid = token.scaninteger()
+      local cid = token.scaninteger()
+      local quad = font.getfontdimen(fid, 6)/1000 ! 6 - quad
+      if value == 'value' then
+        token.put_next(luametalatex.primitive_tokens.lpcode, token.new(fid, set_font_cmd), token.new(cid, char_given_cmd))
+        token.skipnext()
+        token.skipnext()
+        token.put_next(luametalatex.primitive_tokens.lpcode, token.new(fid, set_font_cmd), token.create(string.byte'`'), token.new(cid, char_given_cmd))
+        local raw = token.scan_dimen()
+        return luametalatex.value.integer, (raw / quad + .5)//1
+      else
+        token.scan_keyword'='
+        local factor = token.scaninteger()
+        tex.runtoks(function()
+          token.put_next(luametalatex.primitive_tokens.lpcode, token.new(fid, set_font_cmd), token.create(string.byte'`'), token.new(cid, char_given_cmd), token.new('dimension', (factor * quad + .5)//1))
+        end)
+        return
+      end
     end
   }}
 }%

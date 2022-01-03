@@ -603,8 +603,6 @@ vf = {
   end,
   -- image = function(img) -- TODO
   node = function(n)
-    assert(node.type(n))
-    cmd = todirect(n)
     local x = vf_state[4]
     nodehandler[getid(n)](vf_state[1], n, x, vf_state[5], vf_state[6], vf_state[7], vf_state[8], vf_state[9])
     vf_state[4] = x + getwidth(n)
@@ -618,7 +616,7 @@ vf = {
   end,
   push = function()
     local stack = vf_state[2]
-    stack[#stack + 1] = vf_state[4], vf_state[5]
+    stack[#stack + 1] = {vf_state[4], vf_state[5]}
   end,
   right = function(dx)
     vf_state[4] = vf_state[4] + dx
@@ -654,9 +652,11 @@ function nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
     texio.write_nl("Missing character")
     return
   end
-  if c.commands then return do_commands(p, c, f, cid, fid, x, y, outer, x0, level, direction) end
   local xoffset, yoffset = getoffsets(n)
-  toglyph(p, getfont(n), x + (direction == 1 and -xoffset or xoffset), y + yoffset, getexpansion(n))
+  x = direction == 1 and x - xoffset or x + xoffset
+  y = y + yoffset
+  if c.commands then return do_commands(p, c, f, cid, fid, x, y, outer, x0, level, direction) end
+  toglyph(p, getfont(n), x, y, getexpansion(n))
   local index = c.index
   if index then
     -- if f.encodingbytes == -3 then
@@ -736,6 +736,9 @@ function pdf.write(mode, text, x, y, p)
   else
     write(format('Literal type %s unsupported', mode))
   end
+end
+function pdf.getpos()
+  return global_x, global_y
 end
 local ondemandmeta = {
   __index = function(t, k)

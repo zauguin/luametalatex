@@ -1,4 +1,6 @@
--- Provide enough compatibility functions to make luaotfload happy
+-- Provide enough compatibility functions in the node module to make LuateX code happy.
+--
+-- These were added for luaotfload
 
 local properties = node.direct.get_properties_table()
 local flush = node.direct.flush_list
@@ -33,4 +35,12 @@ local tonode = node.direct.tonode
 
 function node.mlist_to_hlist(n, ...)
   return tonode(mlist_to_hlist(todirect(n), ...))
+end
+
+-- For luapstricks we also need
+local hpack = node.direct.hpack
+
+function node.hpack(n, ...)
+  local h, b = hpack(todirect(n), ...)
+  return tonode(h), b
 end

@@ -64,7 +64,6 @@ function font.define(f)
     local entry = fontmap[f.name]
     if entry then
       local filename = entry[3]
-      local format
       if format == 'unknown' then
         f.format = filename and filename:sub(-4, -4) == '.' and fontextensions[filename:sub(-3, -1)] or 'type1'
       end
