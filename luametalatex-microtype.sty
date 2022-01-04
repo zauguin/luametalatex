@@ -16,6 +16,7 @@
     \expandafter\expandafter\expandafter\luametalatex@@setexpansion\csname pickup@font@@hook@luametalatex@microtype@\the\fontid\font@name\endcsname{-1}{-1}{-1}\relax
   }%
   \MT@MT@pickupfont
+  \pickup@font
 }%
 \begingroup
 \catcode`\!=\catcode`\%
@@ -23,6 +24,7 @@
 \@firstofone{!
   \endgroup
   \luametalatex@@everyjobandnow{\directlua{!
+    local current = font.current
     local func = luatexbase.new_luafunction'expandglyphsinfont'
     local dim_cmd = '__luametalatex_microtype_tmp_dim'
     token.setdimension(dim_cmd, 0)
@@ -34,6 +36,11 @@
       local stretch = token.scaninteger()
       local shrink = token.scaninteger()
       local step = token.scaninteger()
+      if font == current() then
+        tex.adjustspacingstretch = stretch
+        tex.adjustspacingshrink = shrink
+        tex.adjustspacingstep = step
+      end
       token.set_macro('pickup@font@@hook@luametalatex@microtype@' .. font, string.format("{}{%i}{%i}{%i}", stretch, shrink, step), "global")
     end
     local set_font_cmd = token.command_id'set_font'
