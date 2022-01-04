@@ -81,6 +81,7 @@ function font.define(f)
     rawset(parameters, 'spacestretch', rawget(parameters, 'spacestretch') or rawget(parameters, 'space_stretch'))
     rawset(parameters, 'spaceshrink', rawget(parameters, 'spaceshrink') or rawget(parameters, 'space_shrink'))
     rawset(parameters, 'xheight', rawget(parameters, 'xheight') or rawget(parameters, 'x_height'))
+    rawset(parameters, 'extraspace', rawget(parameters, 'extraspace') or rawget(parameters, 'extra_space'))
   end
   local id = old_font_define(f)
   all_fonts[id] = f
