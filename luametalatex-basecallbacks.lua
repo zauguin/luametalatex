@@ -1,4 +1,8 @@
--- Three callbacks are defined in other files: stop_run in back-pdf, pre_dump in lateinit, and find_fmt_file in init
+-- Some callbacks are defined in other files:
+--  * stop_run in back-pdf
+--  * pre_dump in lateinit
+--  * find_fmt_file in init
+--  * mlist_to_hlist in mathparams
 
 local read_tfm = font.read_tfm
 local font_define = font.define

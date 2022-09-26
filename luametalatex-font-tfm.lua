@@ -73,7 +73,7 @@ local function parse_tfm(buf, i, size)
     kerns, i = read_scaled(buf, i, nk, size)
     for j = 1, ne do
       local ext = {}
-      ext.top, ext.mid, ext.bot, ext.rep, i = string.unpack("BBBB", buf, i)
+      ext.top, ext.middle, ext.bottom, ext.extender, i = string.unpack("BBBB", buf, i)
       for k,v in pairs(ext) do
         if v == 0 then ext[k] = nil end
       end
@@ -127,7 +127,7 @@ local function parse_tfm(buf, i, size)
     mode = 0,
     slant = 0,
     squeeze = 1000,
-    oldmath = false,
+    oldmath = true,
     streamprovider = 0,
     tounicode = 0,
     type = "unknown",

@@ -30,13 +30,14 @@ local is_user_callback = setmetatable({}, {
     return is_user
   end,
 })
-local callbacks = setmetatable({
+local callbacks callbacks = setmetatable({
   __freeze = function(name, fixed)
     -- Convert from type 2 to type 3 or 4. This function will be deleted before user code runs.
     assert(not is_user_callback[name], 'Not a system callback')
     assert(not system_callbacks[name], 'Already frozen')
     is_user_callback[name] = fixed and true or false
     system_callbacks[name] = callback_find(name)
+    rawset(callbacks, name, nil)
     assert(system_callbacks[name], 'Attempt to freeze undefined callback')
   end,
 }, {

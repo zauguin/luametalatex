@@ -336,6 +336,7 @@ require'luametalatex-meaning'
 require'luametalatex-baseregisters'
 require'luametalatex-back-pdf'
 require'luametalatex-oldnode'
+require'luametalatex-mathparams'
 
 lmlt.luacmd("Umathcodenum", function(_, scanning)
   if scanning then

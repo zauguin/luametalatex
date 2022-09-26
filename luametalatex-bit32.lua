@@ -16,6 +16,10 @@ return {
     return (i ^ j) & mask32
   end,
   extract = function(v, shift, count)
-    return ((mask32 & v) >> shift) & ((1<<count)-1)
+    if count then
+      return ((mask32 & v) >> shift) & ((1<<count)-1)
+    else
+      return ((mask32 & v) >> shift) & 1
+    end
   end,
 }
