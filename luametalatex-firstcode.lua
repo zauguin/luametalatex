@@ -349,5 +349,13 @@ lmlt.luacmd("Umathcodenum", function(_, scanning)
   end
 end, "force", "global", "value")
 
+lmlt.luacmd("Umathcharnumdef", function(_, flags)
+  assert(flags ~= 'value')
+  local cs = scan_csname(true)
+  scan_keyword'='
+  local mathcode = scan_int()
+  tex.mathchardef(cs, (mathcode >> 21) & 7, mathcode >> 24, mathcode & 0x1FFFFF, flags)
+end, "force", "global", "value")
+
 -- This is effectivly the last line before we hand over to normal TeX.
 require'luametalatex-callbacks'.__freeze = nil

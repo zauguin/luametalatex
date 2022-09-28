@@ -22,13 +22,13 @@ local style_names = {
   SS = 'scriptscript',
 }
 local style = lpeg.Cg(lpeg.S'DTS' * lpeg.P'S'^-1 / style_names * lpeg.C"'"^-1)
-local styles = lpeg.Cf(lpeg.Ct'' * style * (', ' * style)^0, function(t, name, cramped) t[(cramped and 'cramped' or '') .. name] = true return t end)
+local styles = lpeg.Cf(lpeg.Ct'' * style * (', ' * style)^0 * -1, function(t, name, cramped) t[(cramped and 'cramped' or '') .. name] = true return t end)
 local splitted_styles = setmetatable({}, {__index = function(t, names)
   local splitted
   if #names == 0 then
     splitted = t["D, D', T, T', S, S', SS, SS'"]
   else
-    splitted = styles:match(names)
+    splitted = assert(styles:match(names))
   end
   t[names] = splitted
   return splitted
@@ -142,7 +142,7 @@ local function set_math_param_fallbacks()
       set_math('supbottommin', abs(math_x_height/4), "") 
       set_math('supshiftdrop', sup_drop, "") 
       set_math('supshiftup', sup1, "D") 
-      set_math('supshiftup', sup2, "T, S, SS,") 
+      set_math('supshiftup', sup2, "T, S, SS") 
       set_math('supshiftup', sup3, "D', T', S', SS'") 
       set_math('supsubbottommax', abs(math_x_height*4)/5, "") 
       set_math('underbarkern', default_rule_thickness, "") 
