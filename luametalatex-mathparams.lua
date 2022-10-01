@@ -58,9 +58,26 @@ local function set_math(style)
   end
 end
 
+-- TODO: Reconsider. Not really the old behavior, but probably the right thing to do in most cases.
+local use_fam_zero_params do
+  local define_family = token.command_id'define_family'
+  local char_given = token.command_id'char_given'
+  use_fam_zero_params = {
+    token.new(0, define_family), token.new(0, char_given),
+    token.new(0, define_family), token.new(0, char_given),
+    token.new(1, define_family), token.new(0, char_given),
+    token.new(1, define_family), token.new(0, char_given),
+    token.new(2, define_family), token.new(0, char_given),
+    token.new(2, define_family), token.new(0, char_given),
+  }
+end
+
 local abs = math.abs
 
 local function set_math_param_fallbacks()
+  tex.pushlocal()
+  token.putnext(use_fam_zero_params)
+  tex.poplocal()
   local mathnolimitsmode = tex.mathnolimitsmode
   tex.mathnolimitsmode = 1
 
