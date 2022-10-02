@@ -87,7 +87,7 @@ local finalize_shipout do
   local endgroup_token = lmlt.primitive_tokens.endgroup
   function finalize_shipout()
     if tex.tracingoutput > 0 then
-      tex.sprint(initex_catcodetable, showbox_token, 'content diagnose 0')
+      tex.sprint(initex_catcodetable, showbox_token, 'contentdiagnose 0')
     end
     tex.sprint(initex_catcodetable, global_token, deadcycles_token, '0', endgroup_token)
   end
