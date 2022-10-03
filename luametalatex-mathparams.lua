@@ -73,13 +73,24 @@ local use_fam_zero_params do
 end
 
 local abs = math.abs
+local fonts = font.fonts
 
 local function set_math_param_fallbacks()
   tex.pushlocal()
   token.putnext(use_fam_zero_params)
   tex.poplocal()
+  local legacy_math do
+    local f = fonts[tex.getfontoffamily(0, 0)]
+    if f and f.MathConstants and next(f.MathConstants) then
+      legacy_math = false
+    else
+      legacy_math = true
+    end
+  end
   local mathnolimitsmode = tex.mathnolimitsmode
-  tex.mathnolimitsmode = 1
+  if legacy_math then
+    tex.mathnolimitsmode = 1
+  end
 
   for _, style in pairs{'display', 'text', 'script', 'scriptscript'} do
     local mathsy = mathfamily(2, style)
@@ -172,24 +183,26 @@ local function set_math_param_fallbacks()
       set_math('accentbaseheight', math_x_height, "") -- Was specific to accent font in LuaTeX and earlier
 
       -- HACK to get legacy like nolimits placement on italic operators
-      if mathnolimitsmode == 0 then
-        set_math('nolimitsupfactor', 1000, "") -- HACK
-        set_math('nolimitsubfactor', 0, "") -- HACK
-      elseif mathnolimitsmode == 1 then -- Here the font should normally have set them, we just change the default a bit
-        set_math('nolimitsupfactor', 1000, "")
-        set_math('nolimitsubfactor', 1000, "")
-      elseif mathnolimitsmode == 2 then
-        set_math('nolimitsupfactor', 1000, "")
-        set_math('nolimitsubfactor', 1000, "")
-      elseif mathnolimitsmode == 3 then
-        set_math('nolimitsupfactor', 1000, "")
-        set_math('nolimitsubfactor', 500, "")
-      elseif mathnolimitsmode == 4 then
-        set_math('nolimitsupfactor', 1500, "")
-        set_math('nolimitsubfactor', 500, "")
-      else
-        set_math('nolimitsupfactor', 1000, "")
-        set_math('nolimitsubfactor', mathnolimitsmode > 15 and 1000 - mathnolimitsmode or 1000, "")
+      if legacy_math then
+        if mathnolimitsmode == 0 then
+          set_math('nolimitsupfactor', 1000, "") -- HACK
+          set_math('nolimitsubfactor', 0, "") -- HACK
+        elseif mathnolimitsmode == 1 then -- Here the font should normally have set them, we just change the default a bit
+          set_math('nolimitsupfactor', 1000, "")
+          set_math('nolimitsubfactor', 1000, "")
+        elseif mathnolimitsmode == 2 then
+          set_math('nolimitsupfactor', 1000, "")
+          set_math('nolimitsubfactor', 1000, "")
+        elseif mathnolimitsmode == 3 then
+          set_math('nolimitsupfactor', 1000, "")
+          set_math('nolimitsubfactor', 500, "")
+        elseif mathnolimitsmode == 4 then
+          set_math('nolimitsupfactor', 1500, "")
+          set_math('nolimitsubfactor', 500, "")
+        else
+          set_math('nolimitsupfactor', 1000, "")
+          set_math('nolimitsubfactor', mathnolimitsmode > 15 and 1000 - mathnolimitsmode or 1000, "")
+        end
       end
     end
   end
