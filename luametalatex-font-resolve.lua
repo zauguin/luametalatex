@@ -83,6 +83,11 @@ function font.define(f)
     rawset(parameters, 'xheight', rawget(parameters, 'xheight') or rawget(parameters, 'x_height'))
     rawset(parameters, 'extraspace', rawget(parameters, 'extraspace') or rawget(parameters, 'extra_space'))
   end
+  for cp, char in next, f.characters do
+    if char.top_accent and not char.topaccent then
+      char.topaccent = char.top_accent
+    end
+  end
   local id = old_font_define(f)
   all_fonts[id] = f
   if f.fonts then
