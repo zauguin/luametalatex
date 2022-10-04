@@ -12,7 +12,6 @@ local callback_find = callback.find
 
 local constants = status.getconstants()
 
-local lua_call_cmd = token.command_id'lua_call'
 local properties = node.direct.get_properties_table()
 node.direct.properties = properties
 function node.direct.get_properties_table()
@@ -219,6 +218,7 @@ local expand_after = lmlt.primitive_tokens.expandafter
 local input_tok = lmlt.primitive_tokens.input
 local endlocalcontrol = lmlt.primitive_tokens.endlocalcontrol
 local afterassignment = lmlt.primitive_tokens.afterassignment
+local fontid = lmlt.primitive_tokens.fontid
 local lbrace = token.new(0, 1)
 local rbrace = token.new(0, 2)
 lmlt.luacmd("read", function(_, prefix)
@@ -332,7 +332,13 @@ lmlt.luacmd("latelua", function() -- \latelua
   node.direct.write(whatsit)
 end, "protected")
 
-local functions = lua.get_functions_table()
+lmlt.luacmd("lmltx@letfont", function(_, prefix)
+  if immediate == "value" then return end
+  local macro = scan_csname(true)
+  token.putback(fontid)
+  local id = scan_int()
+  tex.definefont(macro, id, prefix)
+end, "value")
 
 require'luametalatex-meaning'
 require'luametalatex-baseregisters'
