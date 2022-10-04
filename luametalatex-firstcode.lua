@@ -256,6 +256,8 @@ lmlt.luacmd("read", function(_, prefix)
         balance = balance + 1
       elseif tok.command == 2 then
         balance = balance - 1
+      elseif tok.command == 6 then -- Double ## for \def
+        tokens[#tokens+1] = tok
       end
       tokens[#tokens+1] = tok
     end
