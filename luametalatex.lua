@@ -43,7 +43,7 @@ for i, a in ipairs(os.selfarg) do
 end
 os.setenv("engine", status.luatex_engine)
 
-local kpse_call = io.popen(string.format("kpsewhich -progname%s -format lua -all -must-exist%s-init.lua", late_arg_pattern:match(format), late_arg_pattern:match(format)))
+local kpse_call = io.popen(string.format("kpsewhich -progname%s -format lua -all -must-exist luametalatex-init.lua", late_arg_pattern:match(format)))
 local file
 repeat
   file = kpse_call:read()
@@ -60,7 +60,7 @@ else
   function geterrorcode(ec) return ec & 0xFF == 0 and ec >> 8 or 0xFF end
 end
 
-local firstargs = string.format("luametatex --permitloadlib%s%s", late_arg_pattern:match('--lua=' .. file), late_arg_pattern:match('--arg0=' .. os.selfarg[0]))
+local firstargs = string.format("luametatex --permitloadlib%s%s%s", late_arg_pattern:match('--lua=' .. file), late_arg_pattern:match('--arg0=' .. os.selfarg[0]), late_arg_pattern:match('--fmt=' .. format))
 local args = table.concat(os.selfarg)
 if run then -- The user wants to take care of everything
   os.exit(geterrorcode(os.execute(firstargs .. args)))

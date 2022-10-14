@@ -1,8 +1,7 @@
 do
-  local ourpath
-  ourpath, texconfig.formatname = lua.startupfile:match('(.*[/\\])([^/\\]*)%-init%.lua$')
+  -- texconfig.formatname = lua.startupfile:match('[/\\]([^/\\]*)%-init%.lua$')
   local function try_lib(name)
-    local path = string.format('%s%s.%s', ourpath, name,
+    local path = string.format('%s/lib/luametatex/lua/%s.%s', os.selfdir, name,
       os.type == 'windows' and 'dll' or os.name == 'macosx' and 'dylib' or 'so')
     local lib, msg = package.loadlib(path, '*')
     if lib then
@@ -61,7 +60,7 @@ if status.ini_version then
   end
 end
 
-callback_register('find_format_file', function(name) texconfig.formatname = kpse.find_file(name, 'fmt', true) return texconfig.formatname end)
+callback_register('find_format_file', function(name) return kpse.find_file(name, 'fmt', true) end)
 -- texconfig.firstline = [[\show ]]
 function texconfig.init()
   do
