@@ -83,16 +83,17 @@ if status.ini_version then
       tex.runtoks(function()
         token.put_next(token.create'newtoks', t)
       end)
-      pdf_toks_map[entry[1]] = t.index
-      tex.toks[t.index] = entry[2]
+      local index = tex.getregisterindex(csname)
+      pdf_toks_map[entry[1]] = index
+      tex.toks[index] = entry[2]
     end
   end
 else
   function pdf_toks(name, default)
     pdf_variable_names[#pdf_variable_names+1] = name
-    local t = token.create('pdfvariable  ' .. name)
-    pdf_toks_map[name] = t.index
-    tex.toks[t.index] = default
+    local index = tex.getregisterindex('pdfvariable  ' .. name)
+    pdf_toks_map[name] = index
+    tex.toks[index] = default
   end
 end
 
