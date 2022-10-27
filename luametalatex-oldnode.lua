@@ -1,17 +1,19 @@
--- Provide enough compatibility functions in the node module to make LuateX code happy.
+-- Provide enough compatibility functions in the node module to make LuaTeX code happy.
+--
+local direct = node.direct
 --
 -- These were added for luaotfload
 
-local properties = node.direct.get_properties_table()
-local flush = node.direct.flush_list
+local properties = direct.get_properties_table()
+local flush = direct.flush_list
 local meta = {__gc = function(t) if t.components then flush(t.components) end end}
 
-function node.direct.getcomponents(n)
+function direct.getcomponents(n)
   local props = properties[n]
   return props and props.components and props.components.components
 end
 
-function node.direct.setcomponents(n, comp)
+function direct.setcomponents(n, comp)
   local props = properties[n]
   if not props then
     if not comp then return end
@@ -29,18 +31,35 @@ function node.direct.setcomponents(n, comp)
   end
 end
 
-local mlist_to_hlist = node.direct.mlist_to_hlist
-local todirect = node.direct.todirect
-local tonode = node.direct.tonode
+local mlist_to_hlist = direct.mlist_to_hlist
+local todirect = direct.todirect
+local tonode = direct.tonode
 
 function node.mlist_to_hlist(n, ...)
   return tonode(mlist_to_hlist(todirect(n), ...))
 end
 
 -- For luapstricks we also need
-local hpack = node.direct.hpack
+local hpack = direct.hpack
 
 function node.hpack(n, ...)
   local h, b = hpack(todirect(n), ...)
   return tonode(h), b
+end
+
+-- Originally for lua-widow-control
+local slide = direct.slide
+local vpack = direct.vpack
+local find_attribute = direct.find_attribute
+
+function node.slide(n) return tonode(slide(todirect(n))) end
+function node.vpack(n, ...)
+  local v, b = vpack(todirect(n), ...)
+  return tonode(v), b
+end
+function node.find_attribute(n, id)
+  local val, found = find_attribute(todirect(n), id)
+  if val then
+    return val, tonode(found)
+  end
 end
