@@ -322,7 +322,7 @@ local late_lua_whatsit = new_whatsit('late_lua', function(p, pfile, n, x, y)
   elseif not code then
     error[[Missing code in latelua]]
   end
-  return pdf._latelua(pfile, x, y, code)
+  return pdf._latelua(pfile, x, y, code, node.direct.tonode(n))
 end)
 lmlt.luacmd("latelua", function() -- \latelua
   local content = scan_tokenlist()
