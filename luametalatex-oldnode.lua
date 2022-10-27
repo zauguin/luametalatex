@@ -1,4 +1,4 @@
--- Provide enough compatibility functions in the node module to make LuateX code happy.
+-- Provide enough compatibility functions in the node module to make LuaTeX code happy.
 --
 -- These were added for luaotfload
 
@@ -44,3 +44,27 @@ function node.hpack(n, ...)
   local h, b = hpack(todirect(n), ...)
   return tonode(h), b
 end
+
+local slide = node.direct.slide
+
+function node.slide(n)
+    return tonode(slide(todirect(n)))
+end
+
+local vpack = node.direct.vpack
+
+function node.vpack(n, ...)
+  local h, b = vpack(todirect(n), ...)
+  return tonode(h), b
+end
+
+local findattribute = node.direct.findattribute
+
+function node.findattribute(n, a)
+    local v, n = findattribute(todirect(n), a)
+    if n then
+      return v, tonode(n)
+    end
+end
+
+node.find_attribute = node.findattribute
