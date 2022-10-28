@@ -543,13 +543,30 @@ local literal_whatsit = declare_whatsit('pdf_literal', function(prop, p, n, x, y
   end
   pdf.write(prop.mode, prop.data, x, y, p)
 end)
+local colorstack_actions = {[0] =
+  'set',
+  'push',
+  'pop',
+  'current',
+}
+local colorstack_action_ids = {}
+for i=0, #colorstack_actions do
+  colorstack_action_ids[colorstack_actions[i]] = i
+end
 local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n, x, y)
   if not prop then
     tex.error('Invalid pdf_colorstack whatsit', {"A pdf_colorstack whatsit did not contain all necessary \z
         parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
     return
   end
-  local colorstack = prop.colorstack
+  local idx = prop.colorstack or 0
+  local colorstack = colorstacks[idx + 1]
+  if not colorstack then
+    tex.error('Undefined colorstack', {"The requested colorstack is not initialized. \z
+        This probably means that you forgot to run \\pdffeedback colorstackinit or \z
+        that you specified the wrong index. I will continue with colorstack 0."})
+    colorstack = colorstacks[1]
+  end
   local stack
   if p.is_page then
     stack = colorstack.page_stack
@@ -560,13 +577,18 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
     stack = {prop.default}
     colorstack.form_stack = stack
   end
-  if prop.action == "push" then
+  local action = prop.command
+  action = colorstack_actions[action] or action
+  if action == "push" then
     stack[#stack+1] = prop.data
-  elseif prop.action == "pop" then
+  elseif action == "pop" then
     assert(#stack > 1)
     stack[#stack] = nil
-  elseif prop.action == "set" then
+  elseif action == "set" then
     stack[#stack] = prop.data
+  elseif action ~= "current" then
+    tex.error('Undefined colorstack command', {"The requested colorstack command is not known. \z
+        I will assume that you meant \\pdfextension colorstack current."})
   end
   pdf.write(colorstack.mode, stack[#stack], x, y, p)
 end)
@@ -583,13 +605,6 @@ local link_state_whatsit = declare_whatsit('pdf_link_state', function(prop, p, n
 end)
 local function write_colorstack()
   local idx = scan_int()
-  local colorstack = colorstacks[idx + 1]
-  if not colorstack then
-    tex.error('Undefined colorstack', {"The requested colorstack is not initialized. \z
-        This probably means that you forgot to run \\pdffeedback colorstackinit or \z
-        that you specified the wrong index. I will continue with colorstack 0."})
-    colorstack = colorstacks[1]
-  end
   local action = scan_keyword'pop' and 'pop'
               or scan_keyword'set' and 'set'
               or scan_keyword'current' and 'current'
@@ -607,8 +622,8 @@ local function write_colorstack()
   end
   local whatsit = node.new(whatsit_id, colorstack_whatsit)
   node.setproperty(whatsit, {
-      colorstack = colorstack,
-      action = action,
+      colorstack = idx,
+      command = colorstack_action_ids[action],
       data = text,
     })
   node.write(whatsit)
