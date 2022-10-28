@@ -400,13 +400,13 @@ end
 
 local start_link_whatsit = declare_whatsit('pdf_start_link', function(prop, p, n, x, y, outer, _, level)
   if not prop then
-    tex.error('Invalid pdf_start_link whatsit', {"A pdf_start_link whatsit did not contain all necessary \z
-        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_start_link whatsit', "A pdf_start_link whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
     return
   end
   if not p.is_page then
-    tex.error('pdf_start_link outside of page', {"PDF links are not allowed in Type3 charstrings or Form XObjects. \z
-        The link will be ignored"})
+    tex.error('pdf_start_link outside of page', "PDF links are not allowed in Type3 charstrings or Form XObjects. \z
+        The link will be ignored")
     return
   end
   local links = p.linkcontext
@@ -420,20 +420,20 @@ local start_link_whatsit = declare_whatsit('pdf_start_link', function(prop, p, n
 end)
 local end_link_whatsit = declare_whatsit('pdf_end_link', function(prop, p, n, x, y, outer, _, level)
   if not p.is_page then
-    tex.error('pdf_start_link outside of page', {"PDF links are not allowed in Type3 charstrings or Form XObjects. \z
-        The link will be ignored"})
+    tex.error('pdf_start_link outside of page', "PDF links are not allowed in Type3 charstrings or Form XObjects. \z
+        The link will be ignored")
     return
   end
   local links = p.linkcontext
   if not links then
-    tex.error('No link here to end', {"You asked me to end a link, but currently there is no link active. \z
-        Maybe you forgot to run \\pdfextension startlink first?"})
+    tex.error('No link here to end', "You asked me to end a link, but currently there is no link active. \z
+        Maybe you forgot to run \\pdfextension startlink first?")
     return
   end
   local link = links[#links]
   if link.level ~= level then
-    tex.error('Inconsistent link level', {"You asked me to end a link, but the most recent link had been started at another level. \z
-        I will continue with the link for now."})
+    tex.error('Inconsistent link level', "You asked me to end a link, but the most recent link had been started at another level. \z
+        I will continue with the link for now.")
     return
   end
   links[#links] = nil
@@ -446,15 +446,15 @@ local setmatrix_whatsit do
   local matrixpattern = numberpattern * ' ' * numberpattern * ' ' * numberpattern * ' ' * numberpattern
   setmatrix_whatsit = declare_whatsit('pdf_setmatrix', function(prop, p, n, x, y, outer)
     if not prop then
-      tex.error('Invalid pdf_setmatrix whatsit', {"A pdf_setmatrix whatsit did not contain a matrix value. \z
-          Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+      tex.error('Invalid pdf_setmatrix whatsit', "A pdf_setmatrix whatsit did not contain a matrix value. \z
+          Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
       return
     end
     local m = p.matrix
     local a, b, c, d = matrixpattern:match(prop.data)
     if not a then
-      tex.error('Invalid matrix', {"The matrix in this pdf_setmatrix whatsit does not have the expected structure and could not be parsed. \z
-          Did you provide enough parameters? The matrix needs exactly four decimal entries."})
+      tex.error('Invalid matrix', "The matrix in this pdf_setmatrix whatsit does not have the expected structure and could not be parsed. \z
+          Did you provide enough parameters? The matrix needs exactly four decimal entries.")
       return
     end
     local e, f = (1-a)*x-c*y, (1-d)*y-b*x -- Emulate that the origin is at x, y for this transformation
@@ -479,8 +479,8 @@ local restore_whatsit = declare_whatsit('pdf_restore', function(prop, p, n, x, y
 end)
 local dest_whatsit = declare_whatsit('pdf_dest', function(prop, p, n, x, y)
   if not prop then
-    tex.error('Invalid pdf_dest whatsit', {"A pdf_dest whatsit did not contain all necessary \z
-        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_dest whatsit', "A pdf_dest whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
   end
   assert(cur_page, "Destinations can not appear outside of a page")
   local id = prop.dest_id
@@ -529,8 +529,8 @@ local dest_whatsit = declare_whatsit('pdf_dest', function(prop, p, n, x, y)
 end)
 local refobj_whatsit = declare_whatsit('pdf_refobj', function(prop, p, n, x, y)
   if not prop then
-    tex.error('Invalid pdf_refobj whatsit', {"A pdf_refobj whatsit did not reference any object. \z
-        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_refobj whatsit', "A pdf_refobj whatsit did not reference any object. \z
+        Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
     return
   end
   pfile:reference(prop.obj)
@@ -555,16 +555,16 @@ for i=0, #colorstack_actions do
 end
 local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n, x, y)
   if not prop then
-    tex.error('Invalid pdf_colorstack whatsit', {"A pdf_colorstack whatsit did not contain all necessary \z
-        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_colorstack whatsit', "A pdf_colorstack whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
     return
   end
   local idx = prop.colorstack or 0
   local colorstack = colorstacks[idx + 1]
   if not colorstack then
-    tex.error('Undefined colorstack', {"The requested colorstack is not initialized. \z
+    tex.error('Undefined colorstack', "The requested colorstack is not initialized. \z
         This probably means that you forgot to run \\pdffeedback colorstackinit or \z
-        that you specified the wrong index. I will continue with colorstack 0."})
+        that you specified the wrong index. I will continue with colorstack 0.")
     colorstack = colorstacks[1]
   end
   local stack
@@ -587,8 +587,8 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
   elseif action == "set" then
     stack[#stack] = prop.data
   elseif action ~= "current" then
-    tex.error('Undefined colorstack command', {"The requested colorstack command is not known. \z
-        I will assume that you meant \\pdfextension colorstack current."})
+    tex.error('Undefined colorstack command', "The requested colorstack command is not known. \z
+        I will assume that you meant \\pdfextension colorstack current.")
   end
   pdf.write(colorstack.mode, stack[#stack], x, y, p)
 end)
@@ -596,8 +596,8 @@ local link_state_whatsit = declare_whatsit('pdf_link_state', function(prop, p, n
   if not p.is_page then return end
   local value = prop and prop.value
   if not value then
-    tex.error('Invalid pdf_link_state whatsit', {"A pdf_link_state whatsit did not contain all necessary \z
-        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?"})
+    tex.error('Invalid pdf_link_state whatsit', "A pdf_link_state whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
   end
   if value == 0 or value == 1 then
     p.linkstate = value == 1 and 1 or nil
@@ -610,9 +610,9 @@ local function write_colorstack()
               or scan_keyword'current' and 'current'
               or scan_keyword'push' and 'push'
   if not action then
-    tex.error('Missing action specifier for colorstack', {
+    tex.error('Missing action specifier for colorstack',
         "I don't know what you want to do with this colorstack. I would have expected pop/set/current or push here. \z
-        I will ignore this command."})
+        I will ignore this command.")
     return
   end
   local text
@@ -759,8 +759,8 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     catalogdir = catalogdir .. ' ' .. scan_string()
     if scan_keyword'openaction' then
       if catalog_openaction then
-        tex.error("Duplicate openaction", {"Only one use of \\pdfextension catalog is allowed to \z
-            have an openaction."})
+        tex.error("Duplicate openaction", "Only one use of \\pdfextension catalog is allowed to \z
+            have an openaction.")
       else
         local action = scan_action()
         catalog_openaction = get_action_attr(get_pfile(), action)
