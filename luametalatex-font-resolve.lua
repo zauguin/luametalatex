@@ -85,7 +85,7 @@ function font.define(f)
   end
   for cp, char in next, f.characters do
     if char.top_accent and not char.topaccent then
-      char.topaccent = char.top_accent
+      char.topanchor = char.top_accent
     end
   end
   local id = old_font_define(f)
