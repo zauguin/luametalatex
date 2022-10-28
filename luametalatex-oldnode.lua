@@ -63,3 +63,8 @@ function node.find_attribute(n, id)
     return val, tonode(found)
   end
 end
+
+--
+local has_attribute = direct.has_attribute
+
+function node.has_attribute(n, ...) return has_attribute(todirect(n), ...) end
