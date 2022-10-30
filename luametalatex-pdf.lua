@@ -18,7 +18,7 @@ local function written(pdf, num)
   if not num or num == assigned then return end
   return num ~= delayed
 end
--- raw: Pass on preencoded stream.
+-- raw: Pass on preencoded or uncompressed stream.
 local function stream(pdf, num, dict, content, isfile, raw)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
@@ -81,13 +81,13 @@ local function indirect(pdf, num, content, isfile, objstream)
   end
   return num
 end
-local function delay(pdf, num, content, isfile)
+local function delay(pdf, num, content, isfile, objstream)
   if not num then num = pdf:getobj() end
   if pdf[num] ~= assigned then
     error[[Invalid object]]
   end
   pdf[num] = delayed
-  pdf[-num] = {indirect, content, isfile}
+  pdf[-num] = {indirect, content, isfile, objstream}
   return num
 end
 local function reference(pdf, num)

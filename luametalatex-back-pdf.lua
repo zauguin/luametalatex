@@ -775,20 +775,21 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     else
       local num = scan_keyword'useobjnum' and scan_int() or pfile:getobj()
       lastobj = num
+      local uncompressed = scan_keyword'uncompressed'
       local attr = scan_keyword'stream' and (scan_keyword'attr' and scan_string() or '')
       local isfile = scan_keyword'file'
       local content = scan_string()
       if immediate == immediate_flag then
         if attr then
-          pfile:stream(num, attr, content, isfile)
+          pfile:stream(num, attr, content, isfile, uncompressed)
         else
-          pfile:indirect(num, content, isfile)
+          pfile:indirect(num, content, isfile, not uncompressed)
         end
       else
         if attr then
-          pfile:delayedstream(num, attr, content, isfile)
+          pfile:delayedstream(num, attr, content, isfile, uncompressed)
         else
-          pfile:delayed(num, attr, content, isfile)
+          pfile:delayed(num, attr, content, isfile, not uncompressed)
         end
       end
     end
