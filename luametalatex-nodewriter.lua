@@ -649,7 +649,7 @@ function nodehandler.glyph(p, n, x, y, outer, x0, level, direction)
   local c = f and f.characters
   c = c and c[cid]
   if not c then
-    texio.write_nl("Missing character")
+    texio.write_nl(string.format("Missing character U+%04X in font %s", cid, tex.fontidentifier(fid)))
     return
   end
   local xoffset, yoffset = getoffsets(n)
