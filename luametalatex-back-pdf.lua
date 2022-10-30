@@ -305,6 +305,39 @@ local function projected(m, x, y, w)
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
 
+local annot_whatsit = declare_whatsit('pdf_annot', function(prop, p, n, x, y, outer, _, level)
+  if not prop then
+    tex.error('Invalid pdf_annot whatsit', "A pdf_annot whatsit did not contain all necessary \z
+        parameters. Maybe your code hasn't been adapted to LuaMetaLaTeX yet?")
+    return
+  end
+  if not p.is_page then
+    tex.error('pdf_annot outside of page', "PDF annotations are not allowed in Type3 charstrings or Form XObjects. \z
+        The annotation will be ignored")
+    return
+  end
+  -- TODO: Think about directions
+  -- TODO: Think about running width
+  local width = assert(prop.width, 'FIXME: Running annot width unsupported')
+  local depth = prop.depth or node.direct.getdepth(outer)
+  local height = prop.height or node.direct.getheight(outer)
+  local margin = 0 -- TODO: Which value to use here?
+  local llx, lly = x - margin, y - depth - margin
+  local urx, ury = x + width + margin, y + height + margin
+  p.annots[#p.annots+1] = prop.objnum .. " 0 R"
+  local m = p.matrix
+  local x1, y1 = projected(m, llx, lly)
+  local x2, y2 = projected(m, llx, ury)
+  local x3, y3 = projected(m, urx, lly)
+  local x4, y4 = projected(m, urx, ury)
+  x1, y1, x2, y2, x3, y3, x4, y4 = to_bp(x1), to_bp(y1), to_bp(x2), to_bp(y2), to_bp(x3), to_bp(y3), to_bp(x4), to_bp(y4)
+  local minX = math.min(x1, x2, x3, x4)
+  local minY = math.min(y1, y2, y3, y4)
+  local maxX = math.max(x1, x2, x3, x4)
+  local maxY = math.max(y1, y2, y3, y4)
+  pfile:indirect(prop.objnum, string.format("<</Type/Annot/Rect[%f %f %f %f]%s>>", minX, minY, maxX, maxY, prop.data))
+end)
+
 local function get_action_attr(p, action, is_link)
   local action_type = action.action_type
   if action_type == 3 then return action.data end
@@ -574,7 +607,7 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
     stack = colorstack.form_stack
   else
     colorstack.last_form = p.resources
-    stack = {prop.default}
+    stack = {prop.default or ''}
     colorstack.form_stack = stack
   end
   local action = prop.command
@@ -582,8 +615,11 @@ local colorstack_whatsit = declare_whatsit('pdf_colorstack', function(prop, p, n
   if action == "push" then
     stack[#stack+1] = prop.data
   elseif action == "pop" then
-    assert(#stack > 1)
-    stack[#stack] = nil
+    if #stack > 1 then
+      stack[#stack] = nil
+    else
+      texio.write_nl('Warning (PDF): Ignoring attempt to pop empty color stack')
+    end
   elseif action == "set" then
     stack[#stack] = prop.data
   elseif action ~= "current" then
@@ -724,13 +760,39 @@ lmlt.luacmd("pdfextension", function(_, immediate)
         data = literal,
       })
     node.write(whatsit)
+  elseif scan_keyword"annot" then
+    local pfile = get_pfile()
+    if scan_keyword"reserveobjnum" then
+      lastannot = pfile:getobj()
+    else
+      local whatsit = node.new(whatsit_id, annot_whatsit)
+      local objnum = scan_keyword'useobjnum' and scan_int() or pfile:getobj()
+      lastannot = objnum
+      local prop = {
+        objnum = objnum,
+      }
+      while true do
+        if scan_keyword'width' then
+          prop.width = scan_dimen()
+        elseif scan_keyword'height' then
+          prop.height = scan_dimen()
+        elseif scan_keyword'depth' then
+          prop.depth = scan_dimen()
+        else
+          break
+        end
+      end
+      prop.data = scan_string()
+      node.setproperty(whatsit, prop)
+      node.write(whatsit)
+    end
   elseif scan_keyword"startlink" then
     local pfile = get_pfile()
     local whatsit = node.new(whatsit_id, start_link_whatsit)
     local attr = scan_keyword'attr' and scan_string() or ''
     local action = scan_action()
     local objnum = pfile:getobj()
-    lastannot = num
+    lastannot = objnum
     node.setproperty(whatsit, {
         link_attr = attr,
         action = action,
