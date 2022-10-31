@@ -306,6 +306,22 @@ local function projected(m, x, y, w)
   return x*m[1] + y*m[3] + w*m[5], x*m[2] + y*m[4] + w*m[6]
 end
 
+local function scan_rule()
+  local width, height, depth
+  while true do
+    if scan_keyword'width' then
+      width = scan_dimen()
+    elseif scan_keyword'height' then
+      height = scan_dimen()
+    elseif scan_keyword'depth' then
+      depth = scan_dimen()
+    else
+      break
+    end
+  end
+  return width, height, depth
+end
+
 local annot_whatsit = declare_whatsit('pdf_annot', function(prop, p, n, x, y, outer, _, level)
   if not prop then
     tex.error('Invalid pdf_annot whatsit', "A pdf_annot whatsit did not contain all necessary \z
@@ -784,17 +800,7 @@ lmlt.luacmd("pdfextension", function(_, immediate)
       local prop = {
         objnum = objnum,
       }
-      while true do
-        if scan_keyword'width' then
-          prop.width = scan_dimen()
-        elseif scan_keyword'height' then
-          prop.height = scan_dimen()
-        elseif scan_keyword'depth' then
-          prop.depth = scan_dimen()
-        else
-          break
-        end
-      end
+      prop.width, prop.height, prop.depth = scan_dimen()
       prop.data = scan_string()
       node.setproperty(whatsit, prop)
       node.write(whatsit)
@@ -920,17 +926,7 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     elseif scan_keyword'fitr' then
       prop.dest_type = 'fitr'
       maybe_gobble_cmd(spacer_cmd)
-      while true do
-        if scan_keyword'width' then
-          prop.width = scan_dimen()
-        elseif scan_keyword'height' then
-          prop.height = scan_dimen()
-        elseif scan_keyword'depth' then
-          prop.depth = scan_dimen()
-        else
-          break
-        end
-      end
+      prop.width, prop.height, prop.depth = scan_dimen()
     elseif scan_keyword'fitbh' then
       prop.dest_type = 'fitbh'
       maybe_gobble_cmd(spacer_cmd)
@@ -993,6 +989,7 @@ lmlt.luacmd("saveimageresource", function(_, immediate)
     immediate = immediate & immediate_flag
     tex.error("Unexpected prefix", "You used \\saveimageresource with a prefix that doesn't belong there. I will ignore it for now.")
   end
+  local width, height, depth = scan_rule()
   local attr = scan_keyword'attr' and scan_string() or nil
   local page = scan_keyword'page' and scan_int() or nil
   local userpassword = scan_keyword'userpassword' and scan_string() or nil
@@ -1012,6 +1009,9 @@ lmlt.luacmd("saveimageresource", function(_, immediate)
     ownerpassword = ownerpassword,
     pagebox = pagebox,
     filename = filename,
+    width = width,
+    height = height,
+    depth = depth,
   }
   local pfile = get_pfile()
   lastimage = imglib.get_num(pfile, img)
@@ -1074,20 +1074,8 @@ lmlt.luacmd("saveboxresource", function(_, immediate)
   local index = tex.saveboxresource(box, attr, resources, immediate == immediate_flag, type, margin)
   lastbox = index
 end, "value")
-
 lmlt.luacmd("useboxresource", function()
-  local width, height, depth
-  while true do
-    if scan_keyword'width' then
-      width = scan_dimen()
-    elseif scan_keyword'height' then
-      height = scan_dimen()
-    elseif scan_keyword'depth' then
-      depth = scan_dimen()
-    else
-      break
-    end
-  end
+  local width, height, depth = scan_rule()
   local index = scan_int()
   node.write((tex.useboxresource(index, width, height, depth)))
 end, "protected")
