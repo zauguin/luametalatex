@@ -287,8 +287,9 @@ lmlt.luacmd("pdfvariable", function()
   tex.sprint"\\unexpanded{\\undefinedpdfvariable}"
 end)
 
-local lastobj = -1
 local lastannot = -1
+local lastlink = -1
+local lastobj = -1
 
 function pdf.newcolorstack(default, mode, page)
   local idx = #colorstacks
@@ -735,6 +736,8 @@ lmlt.luacmd("pdffeedback", function()
     tex.sprint(creationdate)
   elseif scan_keyword"lastannot" then
     tex.sprint(tostring(lastannot))
+  elseif scan_keyword"lastlink" then
+    tex.sprint(tostring(lastlink))
   elseif scan_keyword"lastobj" then
     tex.sprint(tostring(lastobj))
   elseif scan_keyword"pageref" then
@@ -802,7 +805,7 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     local attr = scan_keyword'attr' and scan_string() or ''
     local action = scan_action()
     local objnum = pfile:getobj()
-    lastannot = objnum
+    lastlink = objnum
     node.setproperty(whatsit, {
         link_attr = attr,
         action = action,
