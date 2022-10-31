@@ -26,7 +26,7 @@ local function stream(pdf, num, dict, content, isfile, raw)
   end
   pdf[num] = {offset = pdf.file:seek()}
   if isfile then
-    local file <close> = readfile('pdf_stream', content, nil)
+    local file <close> = readfile('data', content, nil)
     content = file()
   end
   local level = not raw and pdfvariable.compresslevel or 0
@@ -58,7 +58,7 @@ local function indirect(pdf, num, content, isfile, objstream)
     error[[Invalid object]]
   end
   if isfile then
-    local file <close> = readfile('pdf_dict', content, nil)
+    local file <close> = readfile('data', content, nil)
     content = file()
   end
   if objstream ~= false and pdfvariable.objcompresslevel ~= 0 then

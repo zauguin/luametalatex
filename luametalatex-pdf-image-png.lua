@@ -101,9 +101,10 @@ function parse.pHYs(buf, i, after, ctxt)
   end
   assert(i == after)
 end
+-- Value is the rendering intent
 function parse.sRGB(buf, i, after, ctxt)
   assert(i+1 == after)
-  ctxt.sRGB = buf:char(i)
+  ctxt.sRGB = buf:byte(i)
 end
 function parse.iCCP(buf, i, after, ctxt)
   local j = buf:find('\0', i, true)
@@ -227,7 +228,7 @@ local function srgb_lookup(pfile, intent)
     local objnum = pfile:stream(nil, '/N 3', 'sRGB.icc', true)
     srgb_colorspace = string.format('[/ICCBased %i 0 R]', objnum)
   end
-  return objnum, intents[intent] or ''
+  return srgb_colorspace, intents[intent] or ''
 end
 
 local pdf_escape = require'luametalatex-pdf-escape'.escape_bytes
