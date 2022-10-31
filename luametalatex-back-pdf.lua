@@ -737,6 +737,16 @@ lmlt.luacmd("pdffeedback", function()
     tex.sprint(tostring(lastannot))
   elseif scan_keyword"lastobj" then
     tex.sprint(tostring(lastobj))
+  elseif scan_keyword"pageref" then
+    local page = scan_int()
+    if page <= 0 then
+      tex.error('Invalid page number when requestiong pageref')
+      tex.sprint('0')
+    else
+      local pfile = get_pfile()
+      local pageref = pfile:reservepage(page)
+      tex.sprint(tostring(pageref))
+    end
   else
   -- The following error message gobbles the next word as a side effect.
   -- This is intentional to make error-recovery easier.
