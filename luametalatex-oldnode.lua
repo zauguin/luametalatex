@@ -51,6 +51,7 @@ end
 local slide = direct.slide
 local vpack = direct.vpack
 local find_attribute = direct.find_attribute
+local effective_glue = direct.effective_glue
 
 function node.slide(n) return tonode(slide(todirect(n))) end
 function node.vpack(n, ...)
@@ -62,6 +63,9 @@ function node.find_attribute(n, id)
   if val then
     return val, tonode(found)
   end
+end
+function node.effective_glue(n, m, round)
+  return effective_glue(todirect(n), todirect(m), round)
 end
 
 --
