@@ -16,6 +16,8 @@
 -- mpfont.lua, mplibtolist.lua, mplibtot2.lua, mpnodelib.lua,
 -- mt1_fontloader.lua, nodebuilder.lua, optimizet2.lua, serializet2.lua.
 
+local stack_limit = 48 + 1 -- +1 for the command byte
+
 return function(cs)
   -- cs might contain some false entries, delete them
   do
@@ -116,47 +118,47 @@ return function(cs)
   -- Now use the variable argument versions of most commands
   for i, v in ipairs(cs) do
     if v[1] == 5 then -- rlineto
-      while cs[i+1] and 5 == cs[i+1][1] do
+      while cs[i+1] and 5 == cs[i+1][1] and #v + #cs[i+1]-1 <= stack_limit do
         table.insert(v, cs[i+1][2])
         table.insert(v, cs[i+1][3])
         table.remove(cs, i+1)
       end
-      if cs[i+1] and 8 == cs[i+1][1] then -- rrcurveto
+      if cs[i+1] and 8 == cs[i+1][1] and #v + #cs[i+1]-1 <= stack_limit then -- rrcurveto
         v[1] = 25 -- rlinecurveto
         for j=2,7 do table.insert(v, cs[i+1][j]) end
         table.remove(cs, i+1)
       end
     elseif v[1] == 6 or v[1] == 7 then
       local next_cmd = (v[1]-5)%2+6
-      while cs[i+1][1] == next_cmd do
+      while cs[i+1][1] == next_cmd and #v + #cs[i+1]-1 <= stack_limit do
         next_cmd = (cs[i+1][1]-5)%2+6
         table.insert(v, cs[i+1][2])
         table.remove(cs, i+1)
       end
     elseif v[1] == 8 then
-      while cs[i+1] and 8 == cs[i+1][1] do -- rrcurveto
+      while cs[i+1] and 8 == cs[i+1][1] and #v + #cs[i+1]-1 <= stack_limit do -- rrcurveto
         for j=2,7 do table.insert(v, cs[i+1][j]) end
         table.remove(cs, i+1)
       end
-      if cs[i+1] and 5 == cs[i+1][1] then -- rlineto
+      if cs[i+1] and 5 == cs[i+1][1] and #v + #cs[i+1]-1 <= stack_limit then -- rlineto
         v[1] = 24 -- rcurveline
         table.insert(v, cs[i+1][2])
         table.insert(v, cs[i+1][3])
         table.remove(cs, i+1)
       end
     elseif v[1] ==  27 then
-      while cs[i+1] and 27 == cs[i+1][1] and #cs[i+1] == 5 do -- hhcurveto
+      while cs[i+1] and 27 == cs[i+1][1] and #cs[i+1] == 5 and #v + #cs[i+1]-1 <= stack_limit do -- hhcurveto
         for j=2,5 do table.insert(v, cs[i+1][j]) end
         table.remove(cs, i+1)
       end
     elseif v[1] ==  26 then
-      while cs[i+1] and 26 == cs[i+1][1] and #cs[i+1] == 5 do -- vvcurveto
+      while cs[i+1] and 26 == cs[i+1][1] and #cs[i+1] == 5 and #v + #cs[i+1]-1 <= stack_limit do -- vvcurveto
         for j=2,5 do table.insert(v, cs[i+1][j]) end
         table.remove(cs, i+1)
       end
     elseif v[1] == 30 or v[1] == 31 then
       local next_cmd = (v[1]-29)%2+30
-      while #v % 2 == 1 and cs[i+1] and next_cmd == cs[i+1][1] do -- [vh|hv]curveto
+      while #v % 2 == 1 and cs[i+1] and next_cmd == cs[i+1][1] and #v + #cs[i+1]-1 <= stack_limit do -- [vh|hv]curveto
         local next_cmd = (cs[i+1][1]-29)%2+30
         for j=2,#cs[i+1] do table.insert(v, cs[i+1][j]) end
         table.remove(cs, i+1)
