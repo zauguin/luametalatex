@@ -180,17 +180,16 @@ local function serialize_fdselect(cff)
 end
 local function serialize_private(private, subrsoffset)
   local data = ""
-  if not private.BlueValues then
-    private.BlueValues = { }
+  if private.BlueValues and #private.BlueValues ~= 0 then
+    local last = 0
+    for _, v in ipairs(private.BlueValues) do
+      data = data .. dictInt(v - last)
+      last = v
+    end
+    data = data .. '\6'
   end
-  local last = 0
-  for _, v in ipairs(private.BlueValues) do
-    data = data .. dictInt(v - last)
-    last = v
-  end
-  data = data .. '\6'
   if private.OtherBlues and #private.OtherBlues ~= 0 then
-    last = 0
+    local last = 0
     for _, v in ipairs(private.OtherBlues) do
       data = data .. dictInt(v - last)
       last = v
@@ -216,7 +215,7 @@ local function serialize_private(private, subrsoffset)
     data = data .. dictInt(private.StdVW) .. '\11'
   end
   if private.StemSnapH and #private.StemSnapH ~= 0 then
-    last = 0
+    local last = 0
     for _, v in ipairs(private.StemSnapH) do
       data = data .. dictInt(v - last)
       last = v
@@ -224,7 +223,7 @@ local function serialize_private(private, subrsoffset)
     data = data .. '\12\12'
   end
   if private.StemSnapV and #private.StemSnapV ~= 0 then
-    last = 0
+    local last = 0
     for _, v in ipairs(private.StemSnapV) do
       data = data .. dictInt(v - last)
       last = v
