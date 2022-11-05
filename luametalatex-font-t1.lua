@@ -57,13 +57,14 @@ end
 local anytype = {
       hexstring
     + literalstring
+    + lpeg.V'array'
     + number
     + lname
     + boolean
-    + lpeg.V'array'
     + name,
   array = lpeg.Ct( '[' * (white^-1 * lpeg.V(1))^0 * white^-1 * ']' -- Arrays have two possible syntaxes
                  + '{' * (white^-1 * lpeg.V(1))^0 * white^-1 * '}') * (white * "executeonly")^-1
+                 + number/0 * white^-1 * 'array' * lpeg.Cf(lpeg.Ct'' * lpeg.Cg(white * 'dup' * white * number * white^-1 * lpeg.V(1) * white^-1 * 'put')^0, rawset)
 }
 
 local function skip_until(p)
