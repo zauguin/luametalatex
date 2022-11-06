@@ -231,7 +231,7 @@ local function srgb_lookup(pfile, intent)
   return srgb_colorspace, intents[intent] or ''
 end
 
-local pdf_escape = require'luametalatex-pdf-escape'.escape_bytes
+local pdf_escape = require'luametalatex-pdf-escape'.escape_raw
 
 local function rawimage(t, content)
   content = xzip.decompress(content)
@@ -287,7 +287,7 @@ function png_functions.write(pfile, img)
     colorspace = '/DeviceGray'
   end
   if colortype & 1 == 1 then -- Indexed
-    colorspace = string.format('[/Indexed%s %i%s]', colorspace, t.PLTE_len-1, pdf_escape(t.PLTE))
+    colorspace = string.format('[/Indexed%s %i(%s)]', colorspace, t.PLTE_len-1, pdf_escape(t.PLTE))
   end
   local colordepth = t.interlace == 1 and 8 or img.colordepth
   local dict = string.format("/Subtype/Image/Width %i/Height %i/BitsPerComponent %i/ColorSpace%s", img.xsize, img.ysize, colordepth, colorspace)
