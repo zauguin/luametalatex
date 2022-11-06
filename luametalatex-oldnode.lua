@@ -70,5 +70,10 @@ end
 
 --
 local has_attribute = direct.has_attribute
+local kerning = direct.kerning
 
 function node.has_attribute(n, ...) return has_attribute(todirect(n), ...) end
+function node.kerning(h, t)
+  local h, t, s = kerning(todirect(h), todirect(t))
+  return tonode(h), tonode(t), s
+end
