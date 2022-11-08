@@ -800,7 +800,7 @@ lmlt.luacmd("pdfextension", function(_, immediate)
       local prop = {
         objnum = objnum,
       }
-      prop.width, prop.height, prop.depth = scan_dimen()
+      prop.width, prop.height, prop.depth = scan_rule()
       prop.data = scan_string()
       node.setproperty(whatsit, prop)
       node.write(whatsit)
@@ -926,7 +926,7 @@ lmlt.luacmd("pdfextension", function(_, immediate)
     elseif scan_keyword'fitr' then
       prop.dest_type = 'fitr'
       maybe_gobble_cmd(spacer_cmd)
-      prop.width, prop.height, prop.depth = scan_dimen()
+      prop.width, prop.height, prop.depth = scan_rule()
     elseif scan_keyword'fitbh' then
       prop.dest_type = 'fitbh'
       maybe_gobble_cmd(spacer_cmd)
