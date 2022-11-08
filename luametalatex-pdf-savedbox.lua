@@ -10,7 +10,7 @@ local to_bp = utils.to_bp
 
 local function shipout(pfile, xform, fontdirs, usedglyphs)
   local list, margin = xform.list, xform.margin
-  if not list then return xform.objnum end -- Already shipped out
+  if not list then return end -- Already shipped out
   local last_page = cur_page cur_page = nil
   local out, resources, annots = writer(pfile, list, fontdirs, usedglyphs)
   cur_page = last_page
@@ -22,13 +22,11 @@ local function shipout(pfile, xform, fontdirs, usedglyphs)
   local dict = string.format('/Subtype/Form%s/Resources%s%s', bbox, resources(xform.resources), xform.attributes or '')
   node.flush_list(list)
   xform.list = nil
-  local objnum = pfile:stream(xform.objnum, dict, out)
-  xform.objnum = objnum
-  return objnum
+  pfile:stream(xform.objnum, dict, out)
 end
 
 local function save(pfile, n, attr, resources, immediate, type, margin, fontdirs, usedglyphs)
-  local index = #xforms+1
+  local objnum = pfile:getobj()
   local xform = {
     list = assert(n, 'List required for saveboxresource'),
     width = n.width,
@@ -37,13 +35,14 @@ local function save(pfile, n, attr, resources, immediate, type, margin, fontdirs
     attributes = attr,
     resources = resources,
     margin = margin,
+    objnum = objnum,
     -- type = type, -- TODO: Not yet used. Do we need this at all?
   }
-  xforms[index] = xform
+  xforms[objnum] = xform
   if immediate then
     shipout(pfile, xform, fontdirs, usedglyphs)
   end
-  return index
+  return objnum
 end
 
 local function adjust_sizes(width, height, depth, real_width, real_height, real_depth)
@@ -76,26 +75,26 @@ for n, name in next, ruletypes do
   if name == 'box' then boxrule = n break end
 end   
 
-local function use(index, width, height, depth)
-  local xform = xforms[index]
+local function use(objnum, width, height, depth)
+  local xform = xforms[objnum]
   if not xform then return nil, nil, nil, nil end
   width, height, depth = adjust_sizes(width, height, depth, xform.width, xform.height, xform.depth)
   local n = node.direct.new(ruleid, boxrule)
-  node.direct.setdata(n, index)
+  node.direct.setdata(n, objnum)
   node.direct.setwhd(n, width, height, depth)
   return node.direct.tonode(n), width, height, depth
 end
 
-local function do_box(data, p, n, x, y)
-  local xform = assert(xforms[data], 'Invalid XForm')
-  local objnum = shipout(p.file, xform, p.fontdirs, p.usedglyphs)
+local function do_box(objnum, p, n, x, y)
+  local xform = assert(xforms[objnum], 'Invalid XForm')
+  shipout(p.file, xform, p.fontdirs, p.usedglyphs)
   local width, height, depth = node.direct.getwhd(n)
   local xscale, yscale = width / xform.width, (height+depth) / (xform.height+xform.depth)
-  p.resources.XObject['Fm' .. tostring(data)] = objnum
+  p.resources.XObject['Fm' .. tostring(objnum)] = objnum
   pdf.write('page', strip_floats(string.format('q %f 0 0 %f %f %f cm /Fm%i Do Q',
     xscale, yscale,
     to_bp(x), to_bp(y-depth+yscale*xform.depth),
-    data)), nil, nil, p)
+    objnum)), nil, nil, p)
 end
 
 return {
