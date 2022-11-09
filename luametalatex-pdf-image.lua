@@ -84,8 +84,8 @@ local function scan(img)
   end
   local flipped = (img.transform + real.rotation) % 2 == 1
   if not (img.depth or img.height) then img.depth = 0 end
+  local xsize, ysize = real.xsize, real.ysize
   if not img.width and not (img.height and img.depth) then
-    local xsize, ysize = real.xsize, real.ysize
     if not real.bbox then
       local xres, yres = img.xres, img.yres
       -- TODO: \pdfvariable Parameters
