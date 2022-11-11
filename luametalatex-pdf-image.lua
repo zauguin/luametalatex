@@ -135,29 +135,32 @@ local img_by_objnum = {}
 -- end
 
 -- Noop if already reserved
-function reserve(pfile, real)
+function reserve(pfile, img)
+  local real = real_images[img]
   local obj = real.objnum or pfile:getobj()
   real.objnum = obj
-  img_by_objnum[obj] = real
+  img_by_objnum[obj] = img
   return obj
 end
 
 local function write_img(pfile, img)
   local objnum = reserve(pfile, img)
-  if not img.written then
-    img.written = true
-    imagetypes[img.imagetype].write(pfile, img)
+  local real = real_images[img]
+  if not real.written then
+    real.written = true
+    imagetypes[real.imagetype].write(pfile, real)
   end
 end
 local function do_img(data, p, n, x, y)
   local img = assert(img_by_objnum[data >> 3], 'Invalid image ID')
   write_img(p.file, img)
+  local real = real_images[img]
   local mirror = data & 4 == 4
-  local rotate = (data + img.rotation) & 3
+  local rotate = (data + real.rotation) & 3
   local width, height, depth = getwhd(n)
   height = height + depth
-  local bbox = img.bbox
-  local xsize, ysize = img.xsize, img.ysize
+  local bbox = real.bbox
+  local xsize, ysize = real.xsize, real.ysize
   local a, b, c, d, e, f = 1, 0, 0, 1
   if bbox then
     e, f = -bbox[1], -bbox[2]
@@ -176,8 +179,8 @@ local function do_img(data, p, n, x, y)
   a, c, e = a*xscale, c*xscale, e*xscale
   b, d, f = b*yscale, d*yscale, f*yscale
   e, f = to_bp(x + e), to_bp(y - depth + f)
-  p.resources.XObject['Im' .. tostring(img.objnum)] = img.objnum
-  pdf.write('page', strip_floats(string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, img.objnum)), nil, nil, p)
+  p.resources.XObject['Im' .. tostring(real.objnum)] = real.objnum
+  pdf.write('page', strip_floats(string.format('q %f %f %f %f %f %f cm /Im%i Do Q', a, b, c, d, e, f, real.objnum)), nil, nil, p)
 end
 local ruleid = node.id'rule'
 local ruletypes = node.subtypes'rule'
@@ -189,7 +192,7 @@ assert(imagerule)
 local function node(pfile, img)
   img = scan(img)
   local n = nodenew(ruleid, imagerule) -- image
-  setdata(n, (reserve(pfile, real_images[img]) << 3) | ((img.transform or 0) & 7))
+  setdata(n, (reserve(pfile, img) << 3) | ((img.transform or 0) & 7))
   setwhd(n, img.width or -0x40000000, img.height or -0x40000000, img.depth or -0x40000000)
   return tonode(n)
 end
@@ -202,7 +205,7 @@ end
 
 local function immediatewrite(pfile, img)
   img = scan(img)
-  write_img(pfile, real_images[img])
+  write_img(pfile, img)
   return img
 end
 
@@ -212,12 +215,8 @@ return {
   write = write,
   node = node,
   from_num = function(i)
-    local img = {}
-    real_images[img] = assert(img_by_objnum[i])
-    return setmetatable(img, restricted_meta)
+    return assert(img_by_objnum[i])
   end,
-  get_num = function(pfile, img)
-    return reserve(pfile, real_images[img])
-  end,
+  get_num = reserve,
   ship = do_img,
 }
