@@ -3,8 +3,9 @@ local strip_floats = require'luametalatex-pdf-utils'.strip_floats
 local pdfe = pdfe
 local l = lpeg
 local regularchar = 1-l.S'\0\t\n\r\f ()<>[]{}/%#'
+local byte = string.byte
 local escapednamechar = l.P(1)/function(s)
-  return format("#%02X")
+  return format("#%02X", byte(s))
 end
 local nameescape = l.Cs(l.Cc'/' * (regularchar + escapednamechar)^0)
 local deepcopy_lookup deepcopy_lookup = {

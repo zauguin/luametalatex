@@ -94,7 +94,9 @@ function pdf_functions.write(pfile, img)
     raw = true
     for i=1,#content do
       local key, type, value, detail = pdfe.getfromstream(content, i)
-      dict = dict .. pdfe_deepcopy(file, img.filepath, pfile, 5, key) .. ' ' .. pdfe_deepcopy(file, img.filepath, pfile, type, value, detail)
+      if key ~= 'Length' then
+        dict = dict .. pdfe_deepcopy(file, img.filepath, pfile, 5, key) .. ' ' .. pdfe_deepcopy(file, img.filepath, pfile, type, value, detail)
+      end
     end
     content = content(false)
   elseif type == 'pdfe.array' then
