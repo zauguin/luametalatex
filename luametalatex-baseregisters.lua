@@ -189,6 +189,23 @@ dir_regs 'pardir'
 dir_regs 'linedir'
 dir_regs 'mathdir'
 
+do
+  lmlt.luacmd('breakafterdirmode', function(_, scanning)
+    local linemode = tex.normalizelinemode
+    if scanning == 'value' then
+      return value, linemode & 0x10 == 0x10 and 1 or 0
+    else
+      scan_keyword'='
+      local new_value = scan_int()
+      if new_value ~= 0 then
+        tex.normalizelinemode = linemode | 0x10
+      else
+        tex.normalizelinemode = linemode & ~0x10
+      end
+    end
+  end, 'global', 'value')
+end
+
 if status.ini_version then
   -- Run in pre_dump callback:
   lua.prepared_code[#lua.prepared_code+1] = function()
